@@ -94,7 +94,7 @@ flowchart TD
 
 ---
 
-# ECG Preprocessing
+# ECG Arrhythmia Classification
 
 ## Setup
 ```bash
@@ -102,24 +102,63 @@ pip install -r requirements.txt
 ```
 
 ## Usage
+
+### 1. Preprocess Data
 ```bash
-# Download and preprocess data
-python preprocessing.py
-
-# Create train/val/test splits
-python create_splits.py
+python preprocessing.py      # Download and preprocess
+python create_splits.py      # Create train/val/test splits
 ```
-
-## Output
-- `data/processed/X.npy` - All segments (shape: num_segments, 1500)
-- `data/processed/y.npy` - All labels
-- `data/splits/X_train.npy, X_val.npy, X_test.npy` - Split features
-- `data/splits/y_train.npy, y_val.npy, y_test.npy` - Split labels
-- `data/splits/class_weights.npy` - Weights for imbalanced classes
-
-## Notes
+### Notes
 - Bandpass filter: 0.5-40 Hz
 - Segments: 5 sec (1500 samples @ 300 Hz)
 - Overlap: 50%
 - Splits: 70% train, 15% val, 15% test (stratified)
 - Class weights: Use with `nn.CrossEntropyLoss(weight=weights)`
+
+
+### 2. Train Model
+```bash
+python train.py              # Train CNN-LSTM baseline
+```
+
+### Model Architecture
+Serial CNN→LSTM:
+- CNN: 3 conv blocks (32→64→128 channels)
+- LSTM: 2 layers, 128 hidden units
+- Output: 4 classes (Normal, AF, Other, Noisy)
+
+
+### 3. Test Components
+```bash
+python dataset.py            # Test DataLoader
+python model.py              # Test model architecture
+```
+### Metrics
+- F1 score (weighted)
+- AUROC (one-vs-rest)
+- Sensitivity per class
+- Specificity per class
+
+
+
+## Files
+- `preprocessing.py` - Download and preprocess ECG data
+- `create_splits.py` - Create stratified splits
+- `dataset.py` - PyTorch Dataset and DataLoader
+- `model.py` - CNN-LSTM architecture
+- `train.py` - Training loop with metrics
+
+## Output
+- `data/processed/` - Preprocessed segments
+- `data/processed/X.npy` - All segments (shape: num_segments, 1500)
+- `data/processed/y.npy` - All labels
+- `data/splits/` - Train/val/test splits
+- `data/splits/X_train.npy, X_val.npy, X_test.npy` - Split features
+- `data/splits/y_train.npy, y_val.npy, y_test.npy` - Split labels
+- `data/splits/class_weights.npy` - Weights for imbalanced classes
+- `checkpoints/best_model.pt` - Trained model
+
+
+
+
+
