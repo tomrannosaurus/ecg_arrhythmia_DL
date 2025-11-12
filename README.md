@@ -91,3 +91,35 @@ flowchart TD
 - If a dependency changes, update the **Dependency Map** and the **(dep: …)** tags; no special tooling required.
 - Each task is discrete and can be updated directly in GitHub via checkboxes.
 -	After Dec 11, optional extensions include multi-lead ECGs, real-time inference, and transformer-based temporal modules.
+
+---
+
+# ECG Preprocessing
+
+## Setup
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+```bash
+# Download and preprocess data
+python preprocessing.py
+
+# Create train/val/test splits
+python create_splits.py
+```
+
+## Output
+- `data/processed/X.npy` - All segments (shape: num_segments, 1500)
+- `data/processed/y.npy` - All labels
+- `data/splits/X_train.npy, X_val.npy, X_test.npy` - Split features
+- `data/splits/y_train.npy, y_val.npy, y_test.npy` - Split labels
+- `data/splits/class_weights.npy` - Weights for imbalanced classes
+
+## Notes
+- Bandpass filter: 0.5-40 Hz
+- Segments: 5 sec (1500 samples @ 300 Hz)
+- Overlap: 50%
+- Splits: 70% train, 15% val, 15% test (stratified)
+- Class weights: Use with `nn.CrossEntropyLoss(weight=weights)`
