@@ -208,6 +208,7 @@ __marimo__/
 
 # data
 data
+checkpoints
 
 # macOS
 .DS_store

@@ -91,12 +91,34 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
     save_path = Path(save_path)
     save_path.parent.mkdir(exist_ok=True)
     
+    # Learning rate scheduler
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='max', factor=0.5, patience=5
+    )
+    
     best_val_f1 = 0
     epochs_no_improve = 0
     
     for epoch in range(num_epochs):
-        # Training
-        train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+        # Training with gradient clipping
+        model.train()
+        total_loss = 0
+        
+        for X, y in train_loader:
+            X, y = X.to(device), y.to(device)
+            
+            optimizer.zero_grad()
+            outputs = model(X)
+            loss = criterion(outputs, y)
+            loss.backward()
+            
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            
+            optimizer.step()
+            total_loss += loss.item()
+        
+        train_loss = total_loss / len(train_loader)
         
         # Validation
         val_loss, val_metrics = evaluate(model, val_loader, criterion, device)
@@ -105,11 +127,14 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
         print(f"  Train Loss: {train_loss:.4f}")
         print(f"  Val Loss: {val_loss:.4f}, F1: {val_metrics['f1']:.4f}, AUROC: {val_metrics['auroc']:.4f}")
         
+        # Update scheduler
+        scheduler.step(val_metrics['f1'])
+        
         # Early stopping
         if val_metrics['f1'] > best_val_f1:
             best_val_f1 = val_metrics['f1']
             torch.save(model.state_dict(), save_path)
-            print(f"  Saved best model (F1: {best_val_f1:.4f})")
+            print(f"  Saved (F1: {best_val_f1:.4f})")
             epochs_no_improve = 0
         else:
             epochs_no_improve += 1
@@ -122,10 +147,10 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
     return model
 
 def get_best_device():
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return torch.device("mps")
     if torch.cuda.is_available():
         return torch.device("cuda")
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return torch.device("mps")
     return torch.device("cpu")
 
 def main():
@@ -133,17 +158,17 @@ def main():
     device = get_best_device()
     print(f"Using device: {device}")
     
-    # Load data
-    train_loader, val_loader, test_loader, class_weights = get_dataloaders(batch_size=32)
+    # Load data with larger batch size
+    train_loader, val_loader, test_loader, class_weights = get_dataloaders(batch_size=64)
     print(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
     
     # Model
     model = CNNLSTM().to(device)
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
     
-    # Loss and optimizer
+    # Loss and optimizer with better settings
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
     
     # Train
     print("\nTraining...")
