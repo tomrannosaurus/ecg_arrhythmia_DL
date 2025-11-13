@@ -86,7 +86,7 @@ def train_simple(num_epochs=30):
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
     
-    # Train using same function as compare_models
+    # Train 
     model = train_model(model, train_loader, val_loader, criterion, optimizer,
                        device, num_epochs=num_epochs, patience=10,
                        save_path="checkpoints/simple_model.pt")
