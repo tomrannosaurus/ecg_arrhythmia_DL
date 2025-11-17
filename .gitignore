@@ -209,6 +209,7 @@ __marimo__/
 
 # data
 data
+checkpoints/
 checkpoints
 checkpoints/
 
