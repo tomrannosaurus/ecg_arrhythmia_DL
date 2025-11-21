@@ -48,7 +48,6 @@ flowchart TD
 - [ ] **[T8]** Implement ECG data augmentation (jitter, scaling, time-warp, cutout) **(dep: T5)**
 - [ ] **[T9]** Add regularization (BN/Dropout) and run hyperparameter search **(dep: T7, T8)**
 - [ ] **[T10]** Run ablations (CNN-only, RNN-only, hybrid; GRU/LSTM/Transformer variant) **(dep: T9)**
-- [ ] **[T10]** Run ablations (CNN-only, RNN-only, hybrid; GRU/LSTM/Transformer variant) **(dep: T9)**
 - *CNN-LSTM Debugging:* CNN-LSTM fails (F1=0.14, AUROC=0.50) vs CNN-only (F1=0.61, AUROC=0.73)
 - [x] **[T10.0]** Test 20s segments -> Both models worse; segment length not the issue
 - [ ] **[T10.1]** Check data leakage (recordings split properly) **(prof)**
