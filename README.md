@@ -40,24 +40,32 @@ flowchart TD
 - [ ] **[T1]** Download PhysioNet 2017 dataset and stage backup MIT-BIH (no deps)
 - [ ] **[T2]** Implement preprocessing (bandpass, z-score), segmentation scripts **(dep: T1)**
 - [ ] **[T3]** Produce train/val/test split with class stats **(dep: T2)**
-- [ ] **[T4]** Implement baseline serial CNN→LSTM model in PyTorch **(dep: T3)**
+- [ ] **[T4]** Implement baseline serial CNN->LSTM model in PyTorch **(dep: T3)**
 - [ ] **[T5]** Run quick baseline training; compute F1/AUROC/sensitivity/specificity **(dep: T4)**
 - [ ] **[T6]** Draft and submit Intermediate Progress Report (summary of setup/baseline) **(dep: T5) — due Nov 14 @ 8:00 AM**
 
 - [ ] **[T7]** Choose and implement primary class-imbalance strategy (weighted loss / sampler / focal) **(dep: T5)**
 - [ ] **[T8]** Implement ECG data augmentation (jitter, scaling, time-warp, cutout) **(dep: T5)**
 - [ ] **[T9]** Add regularization (BN/Dropout) and run hyperparameter search **(dep: T7, T8)**
+
 - [ ] **[T10]** Run ablations (CNN-only, RNN-only, hybrid; GRU/LSTM/Transformer variant) **(dep: T9)**
-- *CNN-LSTM Debugging:* CNN-LSTM fails (F1=0.14, AUROC=0.50) vs CNN-only (F1=0.61, AUROC=0.73)
-- [x] **[T10.0]** Test 20s segments -> Both models worse; segment length not the issue
-- [ ] **[T10.1]** Check data leakage (recordings split properly) **(prof)**
-- [ ] **[T10.2]** Add training accuracy/loss logging **(prof)**
-- [ ] **[T10.3]** Verify label assignment per segment **(prof)**
-- [ ] **[T10.4]** Test differential learning rates (CNN=1e-4, LSTM=1e-3)
-- [ ] **[T10.5]** Test bidirectional LSTM **(prof)**
-- [ ] **[T10.6]** Test transfer learning (pretrain CNN, freeze, train LSTM) **(prof)**
-- [ ] **[T10.7]** Test average LSTM outputs (not just h_n[-1])
-- [ ] **[T10.8]** Test reduced LSTM complexity (1 layer, 64 units)
+  - *CNN-LSTM Debugging:* CNN-LSTM fails (F1=0.14, AUROC=0.50) vs CNN-only (F1=0.61, AUROC=0.73)
+  - **Data & Training Issues (Priority 1)**
+  - [x] **[T10.0]** Test 20s segments -> Both models worse; segment length not the issue
+  - [ ] **[T10.1]** Check data leakage (recordings split properly) **(prof)**
+  - [ ] **[T10.2]** Add training accuracy/loss logging **(prof)**
+  - [ ] **[T10.3]** Verify label assignment per segment **(prof)**
+  - [ ] **[T10.4]** Test differential learning rates (CNN=1e-4, LSTM=1e-3)
+  - **Architecture Variants (Priority 2)**
+  - [ ] **[T10.5]** Test bidirectional LSTM **(prof)** -> `model_bilstm.py`
+  - [ ] **[T10.6]** Test transfer learning (pretrain CNN, freeze, train LSTM) **(prof)**
+  - [ ] **[T10.7]** Test average LSTM outputs (not just h_n[-1])
+  - [ ] **[T10.8]** Test reduced LSTM complexity (1 layer, 64 units) -> `model_simple_lstm.py`
+  - [ ] **[T10.9]** Test LSTM-only model (diagnostic) -> `model_lstm_only.py`
+  - [ ] **[T10.10]** Test residual connections around LSTM -> `model_residual.py`
+  - **Advanced (Priority 3)**
+  - [ ] **[T10.11]** Test GRU instead of LSTM -> `model_gru.py`
+  - [ ] **[T10.12]** Test attention mechanism -> `model_attention.py`
 
 - [ ] **[T11]** Implement interpretability (attention viz, CAM/Grad-CAM) and analyze cases **(dep: T10)**
 
@@ -74,7 +82,7 @@ flowchart TD
 - [ ] [T1] Data download
 - [ ] [T2] Preprocessing/segmentation
 - [ ] [T3] Train/val/test split + class stats
-- [ ] [T4] Baseline CNN→LSTM implementation
+- [ ] [T4] Baseline CNN->LSTM implementation
 - [ ] [T5] Baseline training + metrics
 - [ ] [T6] **Submit Intermediate Progress Report (Nov 14 @ 8:00 AM)**
 
@@ -133,8 +141,8 @@ python train.py              # Train CNN-LSTM baseline
 ```
 
 ### Model Architecture
-Serial CNN→LSTM:
-- CNN: 3 conv blocks (32→64→128 channels)
+Serial CNN->LSTM:
+- CNN: 3 conv blocks (32->64->128 channels)
 - LSTM: 2 layers, 128 hidden units
 - Output: 4 classes (Normal, AF, Other, Noisy)
 

@@ -1,12 +1,37 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import random
 from sklearn.metrics import f1_score, roc_auc_score, confusion_matrix
 from pathlib import Path
 from tqdm import tqdm
 
-from model import CNNLSTM
 from dataset import get_dataloaders
+
+
+# Model registry - maps names to (module, class) pairs
+MODEL_REGISTRY = {
+    'cnn_lstm': ('model', 'CNNLSTM'),
+    'cnn_only': ('model_cnn_only', 'SimpleCNN'),
+    'bilstm': ('model_bilstm', 'CNNBiLSTM'),
+    'simple_lstm': ('model_simple_lstm', 'CNNSimpleLSTM'),
+    'lstm_only': ('model_lstm_only', 'LSTMOnly'),
+    'residual': ('model_residual', 'CNNLSTMResidual'),
+    'gru': ('model_gru', 'CNNGRU'),
+    'attention': ('model_attention', 'CNNLSTMAttention'),
+}
+
+
+def get_model(model_name):
+    """Dynamically import and instantiate a model by name."""
+    if model_name not in MODEL_REGISTRY:
+        available = ', '.join(MODEL_REGISTRY.keys())
+        raise ValueError(f"Unknown model: {model_name}. Available: {available}")
+    
+    module_name, class_name = MODEL_REGISTRY[model_name]
+    module = __import__(module_name)
+    model_class = getattr(module, class_name)
+    return model_class()
 
 
 def calculate_metrics(y_true, y_pred, y_prob):
@@ -146,6 +171,16 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
     model.load_state_dict(torch.load(save_path))
     return model
 
+
+def set_seed(seed):
+    """Set all random seeds for reproducibility."""
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
 def get_best_device():
     if torch.cuda.is_available():
         return torch.device("cuda")
@@ -153,27 +188,55 @@ def get_best_device():
         return torch.device("mps")
     return torch.device("cpu")
 
-def main():
+
+def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_path=None, num_epochs=50, patience=10):
+    """
+    Train a model.
+    
+    Args:
+        model_name: Model architecture to use (default: 'cnn_lstm')
+            Options: cnn_lstm, cnn_only, bilstm, simple_lstm, lstm_only, residual, gru, attention
+        seed: Random seed for reproducibility (default: 42)
+        split_dir: Directory containing train/val/test splits (default: "data/splits")
+        save_path: Model checkpoint path (default: "checkpoints/{model_name}_seed{seed}.pt")
+        num_epochs: Maximum training epochs (default: 50)
+        patience: Early stopping patience (default: 10)
+    
+    Returns:
+        dict: Test metrics (loss, f1, auroc, sensitivity, specificity)
+    """
+    # Set seeds
+    set_seed(seed)
+    
+    # Default save path
+    if save_path is None:
+        save_path = f"checkpoints/{model_name}_seed{seed}.pt"
+    
     # Setup
     device = get_best_device()
     print(f"Using device: {device}")
+    print(f"Model: {model_name}")
+    print(f"Random seed: {seed}")
+    print(f"Split directory: {split_dir}")
     
-    # Load data with larger batch size
-    train_loader, val_loader, test_loader, class_weights = get_dataloaders(batch_size=64)
+    # Load data
+    train_loader, val_loader, test_loader, class_weights = get_dataloaders(
+        batch_size=64, split_dir=split_dir
+    )
     print(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
     
     # Model
-    model = CNNLSTM().to(device)
+    model = get_model(model_name).to(device)
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
     
-    # Loss and optimizer with better settings
+    # Loss and optimizer
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
     
     # Train
     print("\nTraining...")
     model = train_model(model, train_loader, val_loader, criterion, optimizer, 
-                       device, num_epochs=50, patience=10)
+                       device, num_epochs=num_epochs, patience=patience, save_path=save_path)
     
     # Test evaluation
     print("\nTest set evaluation:")
@@ -183,7 +246,35 @@ def main():
     print(f"Test AUROC: {test_metrics['auroc']:.4f}")
     print(f"Sensitivity per class: {test_metrics['sensitivity']}")
     print(f"Specificity per class: {test_metrics['specificity']}")
+    
+    # Return results
+    return {
+        'test_loss': test_loss,
+        'test_f1': test_metrics['f1'],
+        'test_auroc': test_metrics['auroc'],
+        'test_sensitivity': test_metrics['sensitivity'].tolist(),
+        'test_specificity': test_metrics['specificity']
+    }
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description='Train a model')
+    parser.add_argument('--model', type=str, default='cnn_lstm',
+                       choices=list(MODEL_REGISTRY.keys()),
+                       help='Model architecture to train')
+    parser.add_argument('--seed', type=int, default=42, help='Random seed')
+    parser.add_argument('--split_dir', type=str, default='data/splits', help='Split directory')
+    parser.add_argument('--save_path', type=str, default=None, help='Model save path')
+    parser.add_argument('--num_epochs', type=int, default=50, help='Max epochs')
+    parser.add_argument('--patience', type=int, default=10, help='Early stopping patience')
+    args = parser.parse_args()
+    
+    results = main(
+        model_name=args.model,
+        seed=args.seed,
+        split_dir=args.split_dir,
+        save_path=args.save_path,
+        num_epochs=args.num_epochs,
+        patience=args.patience
+    )

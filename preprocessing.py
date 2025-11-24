@@ -83,12 +83,25 @@ def preprocess_dataset(data_dir, save_dir, fs=300, segment_sec=5, overlap=0.5):
     print(f"X: {X.shape}, y: {y.shape}")
 
 
-def main():
+def main(segment_sec=5, save_dir="data/processed"):
+    """
+    Main preprocessing pipeline.
+    
+    Args:
+        segment_sec: Segment length in seconds (default: 5)
+        save_dir: Output directory for processed data (default: "data/processed")
+    """
     download_data()
     data_dir = Path("data/training2017")
-    save_dir = Path("data/processed")
-    preprocess_dataset(data_dir, save_dir)
+    save_dir = Path(save_dir)
+    preprocess_dataset(data_dir, save_dir, segment_sec=segment_sec)
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description='Preprocess ECG data')
+    parser.add_argument('--segment_sec', type=int, default=5, help='Segment length in seconds')
+    parser.add_argument('--save_dir', type=str, default='data/processed', help='Output directory')
+    args = parser.parse_args()
+    
+    main(segment_sec=args.segment_sec, save_dir=args.save_dir)

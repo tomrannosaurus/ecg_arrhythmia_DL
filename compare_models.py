@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
-from pathlib import Path
 
 from model import CNNLSTM
-from debug_train import SimpleCNN
+from model_cnn_only import SimpleCNN
 from dataset import get_dataloaders
 from train import train_model, evaluate
 
@@ -33,11 +32,11 @@ def compare_models():
     
     _, metrics_cnn = evaluate(model_cnn, test_loader, criterion, device)
     results['CNN'] = metrics_cnn
-    print(f"\nCNN Test Results:")
+    print("\nCNN Test Results:")
     print(f"  F1: {metrics_cnn['f1']:.4f}")
     print(f"  AUROC: {metrics_cnn['auroc']:.4f}\n")
     
-    # Test 2: CNN-LSTM
+    # Test 2: CNN-LSTM (main model)
     print("="*60)
     print("MODEL 2: CNN-LSTM (with temporal modeling)")
     print("="*60)
@@ -51,7 +50,7 @@ def compare_models():
     
     _, metrics_lstm = evaluate(model_lstm, test_loader, criterion, device)
     results['CNN-LSTM'] = metrics_lstm
-    print(f"\nCNN-LSTM Test Results:")
+    print("\nCNN-LSTM Test Results:")
     print(f"  F1: {metrics_lstm['f1']:.4f}")
     print(f"  AUROC: {metrics_lstm['auroc']:.4f}\n")
     

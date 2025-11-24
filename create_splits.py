@@ -44,16 +44,26 @@ def print_stats(y_train, y_val, y_test):
         print(f"{name}: {train_n} / {val_n} / {test_n}")
 
 
-def main():
+def main(processed_dir="data/processed", split_dir="data/splits", seed=42):
+    """
+    Create train/val/test splits from processed data.
+    
+    Args:
+        processed_dir: Directory containing X.npy and y.npy (default: "data/processed")
+        split_dir: Output directory for splits (default: "data/splits")
+        seed: Random seed for reproducibility (default: 42)
+    """
+    processed_dir = Path(processed_dir)
+    split_dir = Path(split_dir)
+    
     # Load preprocessed data
-    data_dir = Path("data/processed")
-    X = np.load(data_dir / "X.npy")
-    y = np.load(data_dir / "y.npy")
+    X = np.load(processed_dir / "X.npy")
+    y = np.load(processed_dir / "y.npy")
     
     print(f"Loaded: X {X.shape}, y {y.shape}")
     
     # Create splits
-    X_train, X_val, X_test, y_train, y_val, y_test = create_splits(X, y)
+    X_train, X_val, X_test, y_train, y_val, y_test = create_splits(X, y, seed=seed)
     
     # Calculate class weights
     weights = calculate_class_weights(y_train)
@@ -63,7 +73,6 @@ def main():
     print(f"\nClass weights: {weights}")
     
     # Save splits
-    split_dir = Path("data/splits")
     split_dir.mkdir(parents=True, exist_ok=True)
     
     np.save(split_dir / "X_train.npy", X_train)
@@ -78,4 +87,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description='Create train/val/test splits')
+    parser.add_argument('--processed_dir', type=str, default='data/processed', help='Input directory')
+    parser.add_argument('--split_dir', type=str, default='data/splits', help='Output directory')
+    parser.add_argument('--seed', type=int, default=42, help='Random seed')
+    args = parser.parse_args()
+    
+    main(processed_dir=args.processed_dir, split_dir=args.split_dir, seed=args.seed)
