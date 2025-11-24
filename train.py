@@ -189,7 +189,8 @@ def get_best_device():
     return torch.device("cpu")
 
 
-def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_path=None, num_epochs=50, patience=10):
+def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_path=None, 
+         num_epochs=50, patience=10, lr=1e-4, weight_decay=1e-4, batch_size=64):
     """
     Train a model.
     
@@ -201,6 +202,9 @@ def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_path=None
         save_path: Model checkpoint path (default: "checkpoints/{model_name}_seed{seed}.pt")
         num_epochs: Maximum training epochs (default: 50)
         patience: Early stopping patience (default: 10)
+        lr: Learning rate (default: 1e-4)
+        weight_decay: Weight decay for optimizer (default: 1e-4)
+        batch_size: Training batch size (default: 64)
     
     Returns:
         dict: Test metrics (loss, f1, auroc, sensitivity, specificity)
@@ -218,10 +222,11 @@ def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_path=None
     print(f"Model: {model_name}")
     print(f"Random seed: {seed}")
     print(f"Split directory: {split_dir}")
+    print(f"Learning rate: {lr}, Weight decay: {weight_decay}")
     
     # Load data
     train_loader, val_loader, test_loader, class_weights = get_dataloaders(
-        batch_size=64, split_dir=split_dir
+        batch_size=batch_size, split_dir=split_dir
     )
     print(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
     
@@ -231,7 +236,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_path=None
     
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     
     # Train
     print("\nTraining...")
@@ -268,6 +273,9 @@ if __name__ == "__main__":
     parser.add_argument('--save_path', type=str, default=None, help='Model save path')
     parser.add_argument('--num_epochs', type=int, default=50, help='Max epochs')
     parser.add_argument('--patience', type=int, default=10, help='Early stopping patience')
+    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
+    parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     args = parser.parse_args()
     
     results = main(
@@ -276,5 +284,8 @@ if __name__ == "__main__":
         split_dir=args.split_dir,
         save_path=args.save_path,
         num_epochs=args.num_epochs,
-        patience=args.patience
+        patience=args.patience,
+        lr=args.lr,
+        weight_decay=args.weight_decay,
+        batch_size=args.batch_size
     )
