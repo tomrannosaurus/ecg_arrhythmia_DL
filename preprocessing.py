@@ -54,16 +54,19 @@ def segment_signal(signal, segment_len, overlap):
 
 
 def preprocess_dataset(data_dir, save_dir, fs=300, segment_sec=5, overlap=0.5):
-    """Load all .mat ECG files, preprocess, and save fixed-length segments."""
+    """Load all .mat ECG files, preprocess, and save fixed-length segments.
+    BUGFIX: Now saves recording_ids.npy to track which recording each segment
+    came from. Fixes data leakage when splitting train/val/test sets.
+    """
     segment_len = fs * segment_sec
     save_dir.mkdir(parents=True, exist_ok=True)
 
     ref = pd.read_csv(data_dir / "REFERENCE.csv", header=None, names=["record", "label"])
     label_map = {"N": 0, "A": 1, "O": 2, "~": 3}
 
-    X, y = [], []
+    X, y, recording_ids = [], [], []  # FIX
 
-    for _, row in tqdm(ref.iterrows(), total=len(ref), desc="Processing"):
+    for rec_idx, row in tqdm(ref.iterrows(), total=len(ref), desc="Processing"):
         rec, label = row["record"], row["label"]
         sig = sio.loadmat(data_dir / f"{rec}.mat")["val"][0]
         sig = bandpass(sig, fs)
@@ -72,15 +75,23 @@ def preprocess_dataset(data_dir, save_dir, fs=300, segment_sec=5, overlap=0.5):
         for seg in segment_signal(sig, segment_len, overlap):
             X.append(seg.astype(np.float32))
             y.append(label_map[label])
+            recording_ids.append(rec_idx)
 
     X = np.stack(X)
     y = np.array(y)
+    recording_ids = np.array(recording_ids)
 
+    # save arrays (X, y, recording_ids)
     np.save(save_dir / "X.npy", X)
     np.save(save_dir / "y.npy", y)
+    np.save(save_dir / "recording_ids.npy", recording_ids)
 
     print(f"Saved to {save_dir}")
-    print(f"X: {X.shape}, y: {y.shape}")
+    print(f"X: {X.shape}, y: {y.shape}, recording_ids: {recording_ids.shape}")
+    print("\nData sanity check:")
+    print(f"  - Total recordings: {len(ref)}")
+    print(f"  - Total segments: {len(X)}")
+    print(f"  - Avg segments per recording: {len(X) / len(ref):.1f}")
 
 
 def main(segment_sec=5, save_dir="data/processed"):

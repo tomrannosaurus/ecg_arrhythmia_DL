@@ -2,9 +2,11 @@ import torch
 import torch.nn as nn
 import numpy as np
 import random
+import json
 from sklearn.metrics import f1_score, roc_auc_score, confusion_matrix
 from pathlib import Path
 from tqdm import tqdm
+from datetime import datetime
 
 from dataset import get_dataloaders
 
@@ -52,7 +54,7 @@ def calculate_metrics(y_true, y_pred, y_prob):
     for i in range(len(cm)):
         tn = cm.sum() - (cm[i, :].sum() + cm[:, i].sum() - cm[i, i])
         fp = cm[:, i].sum() - cm[i, i]
-        specificity.append(tn / (tn + fp))
+        specificity.append(tn / (tn + fp) if (tn + fp) > 0 else 0.0)
     
     return {
         'f1': f1,
@@ -62,10 +64,17 @@ def calculate_metrics(y_true, y_pred, y_prob):
     }
 
 
+def calculate_accuracy(y_true, y_pred):
+    """Calculate overall accuracy."""
+    return np.mean(np.array(y_true) == np.array(y_pred))
+
+
 def train_epoch(model, loader, criterion, optimizer, device):
-    """Train for one epoch."""
+    """Train for one epoch and return loss + accuracy."""
     model.train()
     total_loss = 0
+    all_preds = []
+    all_labels = []
     
     for X, y in loader:
         X, y = X.to(device), y.to(device)
@@ -74,11 +83,23 @@ def train_epoch(model, loader, criterion, optimizer, device):
         outputs = model(X)
         loss = criterion(outputs, y)
         loss.backward()
+        
+        # Gradient clipping to prevent exploding gradients (DOES NOT HELP WITH VANISHING GRADIENTS)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        
         optimizer.step()
         
         total_loss += loss.item()
+        
+        # track preds for accuracy
+        preds = torch.argmax(outputs, dim=1)
+        all_preds.extend(preds.cpu().numpy())
+        all_labels.extend(y.cpu().numpy())
     
-    return total_loss / len(loader)
+    avg_loss = total_loss / len(loader)
+    accuracy = calculate_accuracy(all_labels, all_preds)
+    
+    return avg_loss, accuracy
 
 
 def evaluate(model, loader, criterion, device):
@@ -106,70 +127,136 @@ def evaluate(model, loader, criterion, device):
     
     avg_loss = total_loss / len(loader)
     metrics = calculate_metrics(all_labels, all_preds, all_probs)
+    metrics['accuracy'] = calculate_accuracy(all_labels, all_preds) # Add accuracy to metrics
     
     return avg_loss, metrics
 
 
 def train_model(model, train_loader, val_loader, criterion, optimizer, 
-                device, num_epochs=50, patience=10, save_path="checkpoints/best_model.pt"):
-    """Train model with early stopping."""
-    save_path = Path(save_path)
-    save_path.parent.mkdir(exist_ok=True)
+                device, num_epochs=50, patience=10, save_path="checkpoints/best_model.pt",
+                log_path=None, config=None):
+    """Train model w/ early stopping & comprehensive logging.
     
-    # Learning rate scheduler
+    Args:
+        model: PyTorch model
+        train_loader: Training DataLoader
+        val_loader: Validation DataLoader
+        criterion: Loss function
+        optimizer: Optimizer
+        device: Device to train on
+        num_epochs: Max epochs
+        patience: Early stopping patience
+        save_path: Path for best model weights
+        log_path: Path for training log (auto if None)
+        config: Dict of all hyperparams/settings (auto-saved)
+    
+    Returns:
+        model: Trained model
+        history: Training history dict
+    """
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Auto log path if not specified
+    if log_path is None:
+        log_path = save_path.parent / f"{save_path.stem}_history.json"
+    else:
+        log_path = Path(log_path)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # LR scheduler
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='max', factor=0.5, patience=5
     )
     
+    # Training history w/ complete config
+    history = {
+        # Config (all hyperparams for searching optimal settings)
+        'config': config or {},
+        
+        # Per-epoch metrics
+        'train_loss': [],
+        'train_acc': [],
+        'val_loss': [],
+        'val_acc': [],
+        'val_f1': [],
+        'val_auroc': [],
+        'val_sensitivity': [],
+        'val_specificity': [],
+        'learning_rate': [],
+        
+        # Training metadata
+        'epochs_completed': 0,
+        'best_epoch': 0,
+        'best_val_f1': 0.0,
+        'stopped_early': False,
+        'start_time': datetime.now().isoformat(),
+        'end_time': None
+    }
+    
     best_val_f1 = 0
     epochs_no_improve = 0
     
+    print(f"\nTraining with logging to: {log_path}")
+    
     for epoch in range(num_epochs):
-        # Training with gradient clipping
-        model.train()
-        total_loss = 0
-        
-        for X, y in train_loader:
-            X, y = X.to(device), y.to(device)
-            
-            optimizer.zero_grad()
-            outputs = model(X)
-            loss = criterion(outputs, y)
-            loss.backward()
-            
-            # Gradient clipping
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            
-            optimizer.step()
-            total_loss += loss.item()
-        
-        train_loss = total_loss / len(train_loader)
+        # Training
+        train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
         
         # Validation
         val_loss, val_metrics = evaluate(model, val_loader, criterion, device)
         
+        # Get current learning rate
+        current_lr = optimizer.param_groups[0]['lr']
+        
+        # Log history
+        history['train_loss'].append(float(train_loss))
+        history['train_acc'].append(float(train_acc))
+        history['val_loss'].append(float(val_loss))
+        history['val_acc'].append(float(val_metrics['accuracy']))
+        history['val_f1'].append(float(val_metrics['f1']))
+        history['val_auroc'].append(float(val_metrics['auroc']))
+        history['val_sensitivity'].append([float(x) for x in val_metrics['sensitivity']])
+        history['val_specificity'].append([float(x) for x in val_metrics['specificity']])
+        history['learning_rate'].append(float(current_lr))
+        history['epochs_completed'] = epoch + 1
+        
+        # Print progress
         print(f"Epoch {epoch+1}/{num_epochs}")
-        print(f"  Train Loss: {train_loss:.4f}")
-        print(f"  Val Loss: {val_loss:.4f}, F1: {val_metrics['f1']:.4f}, AUROC: {val_metrics['auroc']:.4f}")
+        print(f"  Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
+        print(f"  Val Loss: {val_loss:.4f}, Val Acc: {val_metrics['accuracy']:.4f}, "
+              f"F1: {val_metrics['f1']:.4f}, AUROC: {val_metrics['auroc']:.4f}")
         
         # Update scheduler
         scheduler.step(val_metrics['f1'])
         
-        # Early stopping
+        # Early stopping and checkpoint saving
         if val_metrics['f1'] > best_val_f1:
             best_val_f1 = val_metrics['f1']
+            history['best_val_f1'] = float(best_val_f1)
+            history['best_epoch'] = epoch + 1
             torch.save(model.state_dict(), save_path)
-            print(f"  Saved (F1: {best_val_f1:.4f})")
+            print(f"   Saved (F1: {best_val_f1:.4f})")
             epochs_no_improve = 0
         else:
             epochs_no_improve += 1
             if epochs_no_improve >= patience:
                 print(f"Early stopping after {epoch+1} epochs")
+                history['stopped_early'] = True
                 break
+    
+    # Record end time
+    history['end_time'] = datetime.now().isoformat()
+    
+    # Save training history
+    with open(log_path, 'w') as f:
+        json.dump(history, f, indent=2)
+    print(f"\n Training history saved to: {log_path}")
     
     # Load best model
     model.load_state_dict(torch.load(save_path))
-    return model
+    
+    return model, history
 
 
 def set_seed(seed):
@@ -189,88 +276,172 @@ def get_best_device():
     return torch.device("cpu")
 
 
-def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_path=None, 
+def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_dir=None,
          num_epochs=50, patience=10, lr=1e-4, weight_decay=1e-4, batch_size=64):
-    """
-    Train a model.
+    """Train model w/ comprehensive logging of all params.
+    
+    Automatically generates unique timestamp-based filenames and logs ALL
+    hyperparameters for later searching/comparing optimal configurations.
     
     Args:
-        model_name: Model architecture to use (default: 'cnn_lstm')
-            Options: cnn_lstm, cnn_only, bilstm, simple_lstm, lstm_only, residual, gru, attention
-        seed: Random seed for reproducibility (default: 42)
-        split_dir: Directory containing train/val/test splits (default: "data/splits")
-        save_path: Model checkpoint path (default: "checkpoints/{model_name}_seed{seed}.pt")
-        num_epochs: Maximum training epochs (default: 50)
-        patience: Early stopping patience (default: 10)
-        lr: Learning rate (default: 1e-4)
-        weight_decay: Weight decay for optimizer (default: 1e-4)
-        batch_size: Training batch size (default: 64)
+        model_name: Model arch (cnn_lstm, cnn_only, bilstm, etc.)
+        seed: Random seed
+        split_dir: Dir w/ train/val/test splits
+        save_dir: Dir for checkpoints (default: checkpoints/)
+        num_epochs: Max training epochs
+        patience: Early stopping patience
+        lr: Learning rate
+        weight_decay: Weight decay (L2 reg)
+        batch_size: Training batch size
     
     Returns:
-        dict: Test metrics (loss, f1, auroc, sensitivity, specificity)
+        dict: Test metrics + history
     """
+    # Generate unique timestamp for this run
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
     # Set seeds
     set_seed(seed)
     
-    # Default save path
-    if save_path is None:
-        save_path = f"checkpoints/{model_name}_seed{seed}.pt"
+    # Setup save directory
+    if save_dir is None:
+        save_dir = Path("checkpoints")
+    else:
+        save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    
+    # filenames w/ timestamps
+    run_id = f"{model_name}_seed{seed}_{timestamp}"
+    model_path = save_dir / f"{run_id}.pt"
+    log_path = save_dir / f"{run_id}_history.json"
+    results_path = save_dir / f"{run_id}_results.json"
+    
+    # Build comprehensive config (all hyperparams for searching)
+    config = {
+        # Run identification
+        'run_id': run_id,
+        'timestamp': timestamp,
+        'datetime': datetime.now().isoformat(),
+        
+        # Model config
+        'model_name': model_name,
+        'model_file': MODEL_REGISTRY[model_name][0] + '.py',  # TRACKS WHICH FILE do not remove
+        'model_class': MODEL_REGISTRY[model_name][1],
+        
+        # Data config
+        'split_dir': str(split_dir),
+        'batch_size': batch_size,
+        
+        # Training config
+        'num_epochs': num_epochs,
+        'patience': patience,
+        'seed': seed,
+        
+        # Optimizer config
+        'optimizer': 'Adam',
+        'learning_rate': lr,
+        'weight_decay': weight_decay,
+        
+        # Scheduler config
+        'scheduler': 'ReduceLROnPlateau',
+        'scheduler_mode': 'max',
+        'scheduler_factor': 0.5,
+        'scheduler_patience': 5,
+        
+        # Regularization
+        'gradient_clip_norm': 1.0,
+        
+        # Paths
+        'save_dir': str(save_dir),
+        'model_path': str(model_path),
+        'log_path': str(log_path),
+        'results_path': str(results_path)
+    }
     
     # Setup
     device = get_best_device()
-    print(f"Using device: {device}")
-    print(f"Model: {model_name}")
-    print(f"Random seed: {seed}")
-    print(f"Split directory: {split_dir}")
-    print(f"Learning rate: {lr}, Weight decay: {weight_decay}")
+    
+    # Print config summary
+    print("="*70)
+    print(f"RUN: {run_id}")
+    print("="*70)
+    print(f"Device: {device}")
+    print(f"Model: {model_name} ({config['model_file']})")
+    print(f"Split: {split_dir}")
+    print(f"LR: {lr}, WD: {weight_decay}, BS: {batch_size}")
+    print(f"Epochs: {num_epochs}, Patience: {patience}, Seed: {seed}")
+    print(f"Saving to: {save_dir}")
     
     # Load data
     train_loader, val_loader, test_loader, class_weights = get_dataloaders(
         batch_size=batch_size, split_dir=split_dir
     )
-    print(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
+    print(f"Batches: train={len(train_loader)}, val={len(val_loader)}, test={len(test_loader)}")
     
     # Model
     model = get_model(model_name).to(device)
-    print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
+    n_params = sum(p.numel() for p in model.parameters())
+    config['model_parameters'] = n_params
+    print(f"Parameters: {n_params:,}")
     
-    # Loss and optimizer
+    # Loss + optimizer
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+    config['criterion'] = 'CrossEntropyLoss'
+    config['class_weights'] = class_weights.tolist()
+    
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     
-    # Train
+    # Train w/ config logging
     print("\nTraining...")
-    model = train_model(model, train_loader, val_loader, criterion, optimizer, 
-                       device, num_epochs=num_epochs, patience=patience, save_path=save_path)
+    model, history = train_model(
+        model, train_loader, val_loader, criterion, optimizer, 
+        device, num_epochs=num_epochs, patience=patience, 
+        save_path=model_path, log_path=log_path, config=config
+    )
     
-    # Test evaluation
+    # Test eval
     print("\nTest set evaluation:")
     test_loss, test_metrics = evaluate(model, test_loader, criterion, device)
     print(f"Test Loss: {test_loss:.4f}")
-    print(f"Test F1: {test_metrics['f1']:.4f}")
+    print(f"Test Acc:  {test_metrics['accuracy']:.4f}")
+    print(f"Test F1:   {test_metrics['f1']:.4f}")
     print(f"Test AUROC: {test_metrics['auroc']:.4f}")
-    print(f"Sensitivity per class: {test_metrics['sensitivity']}")
-    print(f"Specificity per class: {test_metrics['specificity']}")
     
-    # Return results
-    return {
-        'test_loss': test_loss,
-        'test_f1': test_metrics['f1'],
-        'test_auroc': test_metrics['auroc'],
-        'test_sensitivity': test_metrics['sensitivity'].tolist(),
-        'test_specificity': test_metrics['specificity']
+    # Complete results w/ config
+    results = {
+        'config': config,
+        'history': history,
+        'test': {
+            'loss': test_loss,
+            'accuracy': test_metrics['accuracy'],
+            'f1': test_metrics['f1'],
+            'auroc': test_metrics['auroc'],
+            'sensitivity': test_metrics['sensitivity'].tolist(),
+            'specificity': test_metrics['specificity']
+        }
     }
+    
+    # Save complete results
+    with open(results_path, 'w') as f:
+        json.dump(results, f, indent=2)
+    print(f"\n Results saved: {results_path}")
+    print(f" Model saved: {model_path}")
+    print(f" History saved: {log_path}")
+    
+    return results
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description='Train a model')
+    parser = argparse.ArgumentParser(
+        description='Train model w/ comprehensive hyperparameter logging'
+    )
     parser.add_argument('--model', type=str, default='cnn_lstm',
                        choices=list(MODEL_REGISTRY.keys()),
-                       help='Model architecture to train')
+                       help='Model architecture')
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
-    parser.add_argument('--split_dir', type=str, default='data/splits', help='Split directory')
-    parser.add_argument('--save_path', type=str, default=None, help='Model save path')
+    parser.add_argument('--split_dir', type=str, default='data/splits', help='Split dir')
+    parser.add_argument('--save_dir', type=str, default=None, help='Checkpoint dir (default: checkpoints/)')
     parser.add_argument('--num_epochs', type=int, default=50, help='Max epochs')
     parser.add_argument('--patience', type=int, default=10, help='Early stopping patience')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
@@ -282,7 +453,7 @@ if __name__ == "__main__":
         model_name=args.model,
         seed=args.seed,
         split_dir=args.split_dir,
-        save_path=args.save_path,
+        save_dir=args.save_dir,
         num_epochs=args.num_epochs,
         patience=args.patience,
         lr=args.lr,
