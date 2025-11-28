@@ -93,7 +93,7 @@ flowchart TD
 - [x] [T9] Regularization + hyperparameter tuning (lr, batch, hidden units)
 
 ### Week of **Nov 23–Nov 29**
-- [ ] [T10] Ablations (architecture variants)
+- [x] [T10] Ablations (architecture variants)
 - [ ] [T11] Interpretability (attention, CAM/Grad-CAM) and analysis notes
 
 ### Week of **Nov 30–Dec 6**
