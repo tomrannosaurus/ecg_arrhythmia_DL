@@ -50,17 +50,18 @@ flowchart TD
 
 - [ ] **[T7]** Choose and implement primary class-imbalance strategy (weighted loss / sampler / focal) **(dep: T5)**
 - [ ] **[T8]** Implement ECG data augmentation (jitter, scaling, time-warp, cutout) **(dep: T5)**
-- [ ] **[T9]** Add regularization (BN/Dropout) and run hyperparameter search **(dep: T7, T8)** 
+- [x] **[T9]** Add regularization (BN/Dropout) and run hyperparameter search **(dep: T7, T8)** 
 
 - [ ] **[T10]** Run ablations (CNN-only, RNN-only, hybrid; GRU/LSTM/Transformer variant) **(dep: T9)**
   - *CNN-LSTM Debugging:* CNN-LSTM fails (F1=0.14, AUROC=0.50) vs CNN-only (F1=0.61, AUROC=0.73)
+  - *Note: CNN-only (F1=0.61, AUROC=0.73) only with overlapping segments, removed for leakage, AUROC drops.*
   - **Data & Training Issues (Priority 1)**
   - [x] **[T10.0]** Test 20s segments -> Both models worse; segment length not the issue
-  - [ ] **[T10.4]** Test differential learning rates (CNN=1e-4, LSTM=1e-3)
+  - [x] **[T10.4]** Test differential learning rates (CNN=1e-4, LSTM=1e-3)
   - **Architecture Variants (Priority 2)**
   - [ ] **[T10.5]** Test bidirectional LSTM **(prof)** -> `model_bilstm.py`
   - [ ] **[T10.6]** Test transfer learning (pretrain CNN, freeze, train LSTM) **(prof)**
-  - [ ] **[T10.7]** Test average LSTM outputs (not just h_n[-1])
+  - [x] **[T10.7]** Test average LSTM outputs (not just h_n[-1])
   - [ ] **[T10.8]** Test reduced LSTM complexity (1 layer, 64 units) -> `model_simple_lstm.py`
   - [ ] **[T10.9]** Test LSTM-only model (diagnostic) -> `model_lstm_only.py`
   - [ ] **[T10.10]** Test residual connections around LSTM -> `model_residual.py`
@@ -89,7 +90,7 @@ flowchart TD
 ### Week of **Nov 16–Nov 22**
 - [ ] [T7] Class-imbalance strategy (weighted loss/sampler/focal)
 - [ ] [T8] Data augmentation for ECG
-- [ ] [T9] Regularization + hyperparameter tuning (lr, batch, hidden units)
+- [x] [T9] Regularization + hyperparameter tuning (lr, batch, hidden units)
 
 ### Week of **Nov 23–Nov 29**
 - [ ] [T10] Ablations (architecture variants)
