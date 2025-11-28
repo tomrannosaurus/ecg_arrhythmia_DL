@@ -210,6 +210,8 @@ __marimo__/
 # data
 data
 
+# checkpoints (but only the model files)
+checkpoints/*.pt
 
 # macOS
 .DS_store
