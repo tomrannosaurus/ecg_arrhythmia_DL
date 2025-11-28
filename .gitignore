@@ -210,6 +210,11 @@ __marimo__/
 # data
 data
 
+# backup
+
+backup*
+*.backup
+
 # checkpoints (but only the model files)
 checkpoints/*.pt
 

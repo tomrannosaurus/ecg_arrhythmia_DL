@@ -1,6 +1,8 @@
 """
-Model: LSTM-Only (No CNN)
-Diagnostic model to verify LSTM can learn independently.
+Model: LSTM-Only (Diagnostic)
+
+No CNN, just LSTM directly on ECG signal.
+Useful for testing if CNN is actually helping.
 
 Usage:
     from model_lstm_only import LSTMOnly
@@ -12,30 +14,26 @@ import torch.nn as nn
 
 
 class LSTMOnly(nn.Module):
-    """LSTM-only model for ECG classification (no CNN).
-    
-    Diagnostic model to verify the LSTM component can learn
-    when given raw ECG input directly.
-    """
+    """LSTM-only model (no CNN)."""
     
     def __init__(self, input_size=1500, num_classes=4,
-                 lstm_hidden=128, lstm_layers=2, dropout=0.5):
+                 lstm_hidden=128, 
+                 dropout=0.15):
         super(LSTMOnly, self).__init__()
         
-        self.input_size = input_size
+        # Project raw input to lower dimension
+        self.input_proj = nn.Linear(1, 16)
         
-        # Reshape raw input into sequence
-        # Split 1500 samples into chunks for LSTM
-        self.chunk_size = 50  # 50 samples per timestep
-        self.seq_len = input_size // self.chunk_size  # 30 timesteps
+        # LayerNorm
+        self.layer_norm = nn.LayerNorm(16)
         
-        # LSTM processes sequence of chunks
+        # LSTM - can use 2 layers since it's the only component
         self.lstm = nn.LSTM(
-            input_size=self.chunk_size,
+            input_size=16,
             hidden_size=lstm_hidden,
-            num_layers=lstm_layers,
+            num_layers=2,
             batch_first=True,
-            dropout=dropout if lstm_layers > 1 else 0
+            dropout=dropout
         )
         
         # Classifier
@@ -53,16 +51,20 @@ class LSTMOnly(nn.Module):
         Returns:
             (batch, num_classes)
         """
-        batch_size = x.size(0)
+        # Reshape: (batch, 1500) -> (batch, 1500, 1)
+        x = x.unsqueeze(-1)
         
-        # Reshape to (batch, seq_len, chunk_size)
-        x = x.view(batch_size, self.seq_len, self.chunk_size)
+        # Project: (batch, 1500, 1) -> (batch, 1500, 16)
+        x = self.input_proj(x)
         
-        # LSTM
+        # Normalize
+        x = self.layer_norm(x)
+        
+        # LSTM: (batch, 1500, 16) -> (batch, 1500, lstm_hidden)
         lstm_out, (h_n, c_n) = self.lstm(x)
         
         # Use last hidden state
-        features = h_n[-1]  # (batch, lstm_hidden)
+        features = h_n[-1]
         
         # Classify
         out = self.fc(features)
@@ -78,6 +80,7 @@ if __name__ == "__main__":
     model = LSTMOnly()
     print(f"LSTMOnly parameters: {count_parameters(model):,}")
     
+    # Test forward pass
     x = torch.randn(8, 1500)
     y = model(x)
     print(f"Input: {x.shape} -> Output: {y.shape}")

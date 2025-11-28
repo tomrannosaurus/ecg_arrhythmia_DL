@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 
 
-class CNNLSTMUltraV2(nn.Module):
+class CNNBiLSTMSeq24(nn.Module):
     """Optimized CNN-LSTM with hyperparameters tuned for better performance."""
     
     def __init__(self, input_size=1500, num_classes=4,
@@ -28,7 +28,7 @@ class CNNLSTMUltraV2(nn.Module):
                  dropout=0.1,      # Decreased from 0.2
                  target_seq_len=24,  # Increased from 16
                  bidirectional=True):  # New: bidirectional
-        super(CNNLSTMUltraV2, self).__init__()
+        super(CNNBiLSTMSeq24, self).__init__()
         
         self.target_seq_len = target_seq_len
         self.bidirectional = bidirectional
@@ -144,9 +144,9 @@ def count_parameters(model):
 
 if __name__ == "__main__":
     # Test model
-    model = CNNLSTMUltraV2()
+    model = CNNBiLSTMSeq24()
     total, frozen = count_parameters(model)
-    print(f"CNNLSTMUltraV2 (Optimized)")
+    print(f"CNNBiLSTMSeq24 (Optimized)")
     print(f"  Trainable parameters: {total:,}")
     print(f"  Frozen parameters: {frozen:,}")
     

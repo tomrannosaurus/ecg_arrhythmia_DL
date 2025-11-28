@@ -1,32 +1,33 @@
 """
-Model: CNN-LSTM Ultra-Simple (Short Sequences)
+Model: CNN-LSTM Ultra V3 (Mean Pooling Variant)
 
-KEY FIXES based on successful papers:
-1. Reduce sequence to ~16 timesteps (vs 187) - CRITICAL
-2. Lower dropout to 0.2 (vs 0.5)
-3. Single LSTM layer (64 units)
-4. Option to freeze CNN for two-stage training
+Different approach from V2:
+1. Uses MEAN of all LSTM outputs (not just last state)
+   - Captures information from entire sequence
+   - More robust than single timestep
+2. Moderate sequence length: 20 timesteps (between V1's 16 and V2's 24)
+3. Moderate LSTM size: 96 units (between V1's 64 and V2's 128)
+4. Unidirectional (simpler than V2's bidirectional)
+
+Philosophy: Sometimes simpler + better aggregation > more complex
 
 Usage:
-    python train_differential.py --model ultra --lr 1e-4 --lstm_lr 1e-5 --seed 42
+    python train_differential.py --model ultra_v3 --lr 1e-4 --lstm_lr 1e-5 --seed 42
 """
 
 import torch
 import torch.nn as nn
 
 
-class CNNLSTMUltra(nn.Module):
-    """Ultra-simple CNN-LSTM with short sequences.
-    
-    Addresses the #1 issue: Sequence length too long (187 → 16)
-    Based on sensors2406306 paper that uses only 10 timesteps.
-    """
+class CNNLSTMMeanPool(nn.Module):
+    """CNN-LSTM with mean pooling over LSTM outputs."""
     
     def __init__(self, input_size=1500, num_classes=4,
                  cnn_channels=[32, 64, 128],
-                 lstm_hidden=64, dropout=0.2,  # Lower dropout!
-                 target_seq_len=16):  # Target sequence length
-        super(CNNLSTMUltra, self).__init__()
+                 lstm_hidden=96,  # Between V1 and V2
+                 dropout=0.15,     # Between V1 (0.2) and V2 (0.1)
+                 target_seq_len=20):  # Between V1 (16) and V2 (24)
+        super(CNNLSTMMeanPool, self).__init__()
         
         self.target_seq_len = target_seq_len
         
@@ -51,28 +52,24 @@ class CNNLSTMUltra(nn.Module):
             nn.Dropout(dropout),
         )
         
-        # CRITICAL: Target sequence length for pooling
-        # This reduces 187 timesteps down to target_seq_len (default 16)
-        self.target_seq_len = target_seq_len
-        
         # LayerNorm for LSTM input
         self.layer_norm = nn.LayerNorm(cnn_channels[2])
         
-        # Single-layer LSTM (simpler = more stable)
+        # LSTM
         self.lstm = nn.LSTM(
             input_size=cnn_channels[2],
             hidden_size=lstm_hidden,
-            num_layers=1,  # Single layer
+            num_layers=1,
             batch_first=True,
-            dropout=0  # No dropout in single-layer LSTM
+            dropout=0
         )
         
         # Classifier
         self.fc = nn.Sequential(
-            nn.Linear(lstm_hidden, 32),
+            nn.Linear(lstm_hidden, 48),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(32, num_classes)
+            nn.Linear(48, num_classes)
         )
     
     def forward(self, x):
@@ -82,21 +79,21 @@ class CNNLSTMUltra(nn.Module):
         x = x.unsqueeze(1)
         x = self.cnn(x)
         
-        # CRITICAL: Reduce sequence length (batch, 128, 187) -> (batch, 128, 16)
-        # Using interpolate instead of AdaptiveAvgPool1d for MPS compatibility
+        # Reduce sequence length
         x = torch.nn.functional.interpolate(x, size=self.target_seq_len, mode='linear', align_corners=False)
         
-        # Prepare for LSTM: (batch, 128, 16) -> (batch, 16, 128)
+        # Prepare for LSTM: (batch, 128, seq) -> (batch, seq, 128)
         x = x.permute(0, 2, 1)
         
         # Normalize
         x = self.layer_norm(x)
         
-        # LSTM: (batch, 16, 128) -> (batch, 16, 64)
+        # LSTM: (batch, seq, 128) -> (batch, seq, lstm_hidden)
         lstm_out, (h_n, c_n) = self.lstm(x)
         
-        # Use last hidden state
-        features = h_n[-1]  # (batch, 64)
+        # KEY DIFFERENCE: Use MEAN of all outputs instead of just last
+        # This captures information from entire sequence more robustly
+        features = lstm_out.mean(dim=1)  # (batch, lstm_hidden)
         
         # Classify
         out = self.fc(features)
@@ -137,10 +134,10 @@ def count_parameters(model):
 
 if __name__ == "__main__":
     # Test model
-    model = CNNLSTMUltra(target_seq_len=16)
+    model = CNNLSTMMeanPool()
     total, frozen = count_parameters(model)
-    print(f"Trainable parameters: {total:,}")
-    print(f"Frozen parameters: {frozen:,}")
+    print(f"CNNLSTMMeanPool (Mean Pooling)")
+    print(f"  Trainable parameters: {total:,}")
     
     # Test forward pass
     x = torch.randn(8, 1500)
@@ -148,17 +145,7 @@ if __name__ == "__main__":
     print(f"\nInput: {x.shape}")
     print(f"Output: {y.shape}")
     
-    # Test freezing
-    print("\n" + "="*50)
-    model.freeze_cnn()
-    total, frozen = count_parameters(model)
-    print(f"After freezing CNN:")
-    print(f"  Trainable: {total:,}")
-    print(f"  Frozen: {frozen:,}")
-    
-    # Test parameter groups
-    print("\n" + "="*50)
-    model.unfreeze_cnn()
+    # Show parameter groups
     print("\nParameter groups:")
     param_groups = model.get_param_groups(cnn_lr=1e-4, lstm_lr=1e-5)
     for group in param_groups:

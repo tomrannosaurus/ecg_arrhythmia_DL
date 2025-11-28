@@ -1,6 +1,8 @@
 """
-Model: CNN-LSTM with Attention
-Adds attention mechanism over LSTM outputs.
+Model: CNN-LSTM with Attention Mechanism (Improved Architecture)
+
+Adds attention mechanism to weight LSTM outputs before classification.
+Based on improved architecture from ultra series.
 
 Usage:
     from model_attention import CNNLSTMAttention
@@ -12,102 +14,131 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class Attention(nn.Module):
-    """Simple attention mechanism over sequence."""
+class AttentionLayer(nn.Module):
+    """Attention mechanism to weight sequence outputs."""
     
     def __init__(self, hidden_size):
-        super(Attention, self).__init__()
+        super(AttentionLayer, self).__init__()
         self.attention = nn.Linear(hidden_size, 1)
     
-    def forward(self, lstm_out):
+    def forward(self, lstm_output):
         """
         Args:
-            lstm_out: (batch, seq_len, hidden_size)
+            lstm_output: (batch, seq_len, hidden_size)
         Returns:
             context: (batch, hidden_size)
-            weights: (batch, seq_len, 1)
+            attention_weights: (batch, seq_len)
         """
         # Compute attention scores
-        scores = self.attention(lstm_out)  # (batch, seq_len, 1)
-        weights = F.softmax(scores, dim=1)
+        attn_scores = self.attention(lstm_output)  # (batch, seq_len, 1)
+        attn_scores = attn_scores.squeeze(-1)       # (batch, seq_len)
         
-        # Weighted sum
-        context = (lstm_out * weights).sum(dim=1)  # (batch, hidden_size)
+        # Apply softmax to get weights
+        attn_weights = F.softmax(attn_scores, dim=1)  # (batch, seq_len)
         
-        return context, weights
+        # Compute weighted sum
+        context = torch.bmm(
+            attn_weights.unsqueeze(1),  # (batch, 1, seq_len)
+            lstm_output                  # (batch, seq_len, hidden)
+        ).squeeze(1)                     # (batch, hidden)
+        
+        return context, attn_weights
 
 
 class CNNLSTMAttention(nn.Module):
-    """CNN-LSTM with attention mechanism for ECG classification."""
+    """CNN-LSTM with attention mechanism."""
     
     def __init__(self, input_size=1500, num_classes=4,
                  cnn_channels=[32, 64, 128],
-                 lstm_hidden=128, lstm_layers=2, dropout=0.5):
+                 lstm_hidden=96,
+                 dropout=0.15,
+                 target_seq_len=20):
         super(CNNLSTMAttention, self).__init__()
         
-        # CNN feature extractor (same as original)
+        self.target_seq_len = target_seq_len
+        
+        # CNN feature extractor - NO BATCH NORM
         self.cnn = nn.Sequential(
+            # Block 1
             nn.Conv1d(1, cnn_channels[0], kernel_size=7, padding=3),
-            nn.BatchNorm1d(cnn_channels[0]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
+            # Block 2  
             nn.Conv1d(cnn_channels[0], cnn_channels[1], kernel_size=5, padding=2),
-            nn.BatchNorm1d(cnn_channels[1]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
+            # Block 3
             nn.Conv1d(cnn_channels[1], cnn_channels[2], kernel_size=3, padding=1),
-            nn.BatchNorm1d(cnn_channels[2]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
         )
+        
+        # LayerNorm for LSTM input
+        self.layer_norm = nn.LayerNorm(cnn_channels[2])
         
         # LSTM
         self.lstm = nn.LSTM(
             input_size=cnn_channels[2],
             hidden_size=lstm_hidden,
-            num_layers=lstm_layers,
+            num_layers=1,
             batch_first=True,
-            dropout=dropout if lstm_layers > 1 else 0
+            dropout=0
         )
         
         # Attention mechanism
-        self.attention = Attention(lstm_hidden)
+        self.attention = AttentionLayer(lstm_hidden)
         
         # Classifier
         self.fc = nn.Sequential(
-            nn.Linear(lstm_hidden, 64),
+            nn.Linear(lstm_hidden, 48),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(64, num_classes)
+            nn.Linear(48, num_classes)
         )
-        
-        # Store attention weights for interpretability
-        self.attention_weights = None
     
-    def forward(self, x):
-        batch_size = x.size(0)
+    def forward(self, x, return_attention=False):
+        """
+        Args:
+            x: (batch, 1500)
+            return_attention: Whether to return attention weights
+        Returns:
+            out: (batch, num_classes)
+            attn_weights: (batch, seq_len) if return_attention=True
+        """
         
+        # CNN: (batch, 1500) -> (batch, 1, 1500) -> (batch, 128, 187)
         x = x.unsqueeze(1)
         x = self.cnn(x)
+        
+        # Reduce sequence length
+        x = torch.nn.functional.interpolate(
+            x, size=self.target_seq_len, 
+            mode='linear', align_corners=False
+        )
+        
+        # Prepare for LSTM: (batch, 128, seq) -> (batch, seq, 128)
         x = x.permute(0, 2, 1)
         
-        # LSTM outputs all timesteps
-        lstm_out, (h_n, c_n) = self.lstm(x)  # (batch, seq_len, hidden)
+        # Normalize
+        x = self.layer_norm(x)
+        
+        # LSTM: (batch, seq, 128) -> (batch, seq, lstm_hidden)
+        lstm_out, (h_n, c_n) = self.lstm(x)
         
         # Apply attention
-        context, self.attention_weights = self.attention(lstm_out)
+        context, attn_weights = self.attention(lstm_out)
         
+        # Classify
         out = self.fc(context)
+        
+        if return_attention:
+            return out, attn_weights
         return out
-    
-    def get_attention_weights(self):
-        """Return attention weights from last forward pass."""
-        return self.attention_weights
 
 
 def count_parameters(model):
@@ -118,7 +149,11 @@ if __name__ == "__main__":
     model = CNNLSTMAttention()
     print(f"CNNLSTMAttention parameters: {count_parameters(model):,}")
     
+    # Test forward pass
     x = torch.randn(8, 1500)
     y = model(x)
     print(f"Input: {x.shape} -> Output: {y.shape}")
-    print(f"Attention weights shape: {model.get_attention_weights().shape}")
+    
+    # Test with attention weights
+    y, attn = model(x, return_attention=True)
+    print(f"Attention weights shape: {attn.shape}")
