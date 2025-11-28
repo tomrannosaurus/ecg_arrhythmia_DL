@@ -1,0 +1,172 @@
+"""
+Model: CNN-LSTM Ultra V2 (Optimized Hyperparameters)
+
+Improvements over V1 (F1=0.5182):
+1. Larger LSTM: 64 -> 128 units (more capacity)
+2. Longer sequences: 16 -> 24 timesteps (more context)
+3. Lower dropout: 0.2 -> 0.1 (like successful papers)
+4. Bidirectional LSTM (captures forward + backward patterns)
+
+Based on sensors2406306 paper (achieved 99% accuracy):
+- They use 10 timesteps, 100 LSTM units, 0.1 dropout
+- We use 24 timesteps, 128 LSTM units (bidirectional = 256 total), 0.1 dropout
+
+Usage:
+    python train_differential.py --model ultra_v2 --lr 1e-4 --lstm_lr 1e-5 --seed 42
+"""
+
+import torch
+import torch.nn as nn
+
+
+class CNNLSTMUltraV2(nn.Module):
+    """Optimized CNN-LSTM with hyperparameters tuned for better performance."""
+    
+    def __init__(self, input_size=1500, num_classes=4,
+                 cnn_channels=[32, 64, 128],
+                 lstm_hidden=128,  # Increased from 64
+                 dropout=0.1,      # Decreased from 0.2
+                 target_seq_len=24,  # Increased from 16
+                 bidirectional=True):  # New: bidirectional
+        super(CNNLSTMUltraV2, self).__init__()
+        
+        self.target_seq_len = target_seq_len
+        self.bidirectional = bidirectional
+        
+        # CNN feature extractor - NO BATCH NORM
+        self.cnn = nn.Sequential(
+            # Block 1
+            nn.Conv1d(1, cnn_channels[0], kernel_size=7, padding=3),
+            nn.ReLU(),
+            nn.MaxPool1d(2),
+            nn.Dropout(dropout),
+            
+            # Block 2  
+            nn.Conv1d(cnn_channels[0], cnn_channels[1], kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(2),
+            nn.Dropout(dropout),
+            
+            # Block 3
+            nn.Conv1d(cnn_channels[1], cnn_channels[2], kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool1d(2),
+            nn.Dropout(dropout),
+        )
+        
+        # Target sequence length
+        self.target_seq_len = target_seq_len
+        
+        # LayerNorm for LSTM input
+        self.layer_norm = nn.LayerNorm(cnn_channels[2])
+        
+        # Bidirectional LSTM
+        self.lstm = nn.LSTM(
+            input_size=cnn_channels[2],
+            hidden_size=lstm_hidden,
+            num_layers=1,
+            batch_first=True,
+            dropout=0,
+            bidirectional=bidirectional
+        )
+        
+        # Classifier (note: lstm_hidden * 2 if bidirectional)
+        lstm_output_size = lstm_hidden * 2 if bidirectional else lstm_hidden
+        self.fc = nn.Sequential(
+            nn.Linear(lstm_output_size, 64),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(64, num_classes)
+        )
+    
+    def forward(self, x):
+        batch_size = x.size(0)
+        
+        # CNN: (batch, 1500) -> (batch, 1, 1500) -> (batch, 128, 187)
+        x = x.unsqueeze(1)
+        x = self.cnn(x)
+        
+        # Reduce sequence length (batch, 128, 187) -> (batch, 128, 24)
+        x = torch.nn.functional.interpolate(x, size=self.target_seq_len, mode='linear', align_corners=False)
+        
+        # Prepare for LSTM: (batch, 128, 24) -> (batch, 24, 128)
+        x = x.permute(0, 2, 1)
+        
+        # Normalize
+        x = self.layer_norm(x)
+        
+        # Bidirectional LSTM: (batch, 24, 128) -> (batch, 24, 256)
+        lstm_out, (h_n, c_n) = self.lstm(x)
+        
+        # For bidirectional, concatenate final forward and backward states
+        if self.bidirectional:
+            # h_n shape: (2, batch, 128) for bidirectional
+            features = torch.cat([h_n[0], h_n[1]], dim=1)  # (batch, 256)
+        else:
+            features = h_n[-1]  # (batch, 128)
+        
+        # Classify
+        out = self.fc(features)
+        
+        return out
+    
+    def freeze_cnn(self):
+        """Freeze CNN weights for two-stage training."""
+        for param in self.cnn.parameters():
+            param.requires_grad = False
+        print("CNN frozen - only LSTM will train")
+    
+    def unfreeze_cnn(self):
+        """Unfreeze CNN for fine-tuning."""
+        for param in self.cnn.parameters():
+            param.requires_grad = True
+        print("CNN unfrozen")
+    
+    def get_param_groups(self, cnn_lr, lstm_lr, fc_lr=None):
+        """Return parameter groups for differential learning rates."""
+        if fc_lr is None:
+            fc_lr = cnn_lr
+        
+        return [
+            {'params': self.cnn.parameters(), 'lr': cnn_lr, 'name': 'cnn'},
+            {'params': self.layer_norm.parameters(), 'lr': lstm_lr, 'name': 'layer_norm'},
+            {'params': self.lstm.parameters(), 'lr': lstm_lr, 'name': 'lstm'},
+            {'params': self.fc.parameters(), 'lr': fc_lr, 'name': 'fc'}
+        ]
+
+
+def count_parameters(model):
+    """Count trainable parameters."""
+    total = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    frozen = sum(p.numel() for p in model.parameters() if not p.requires_grad)
+    return total, frozen
+
+
+if __name__ == "__main__":
+    # Test model
+    model = CNNLSTMUltraV2()
+    total, frozen = count_parameters(model)
+    print(f"CNNLSTMUltraV2 (Optimized)")
+    print(f"  Trainable parameters: {total:,}")
+    print(f"  Frozen parameters: {frozen:,}")
+    
+    # Compare to V1
+    from model_ultra import CNNLSTMUltra
+    v1 = CNNLSTMUltra()
+    v1_params, _ = count_parameters(v1)
+    print(f"\nCNNLSTMUltra V1 (Baseline)")
+    print(f"  Trainable parameters: {v1_params:,}")
+    print(f"\nDifference: +{total - v1_params:,} params")
+    
+    # Test forward pass
+    x = torch.randn(8, 1500)
+    y = model(x)
+    print(f"\nInput: {x.shape}")
+    print(f"Output: {y.shape}")
+    
+    # Show parameter groups
+    print("\nParameter groups for differential LR:")
+    param_groups = model.get_param_groups(cnn_lr=1e-4, lstm_lr=1e-5)
+    for group in param_groups:
+        n_params = sum(p.numel() for p in group['params'])
+        print(f"  {group['name']}: {n_params:,} params, LR={group['lr']}")

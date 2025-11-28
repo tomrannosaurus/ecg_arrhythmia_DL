@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 import random
 import json
+import configparser
 from sklearn.metrics import f1_score, roc_auc_score, confusion_matrix
 from pathlib import Path
 from tqdm import tqdm
@@ -11,17 +12,20 @@ from datetime import datetime
 from dataset import get_dataloaders
 
 
-# Model registry - maps names to (module, class) pairs
-MODEL_REGISTRY = {
-    'cnn_lstm': ('model', 'CNNLSTM'),
-    'cnn_only': ('model_cnn_only', 'SimpleCNN'),
-    'bilstm': ('model_bilstm', 'CNNBiLSTM'),
-    'simple_lstm': ('model_simple_lstm', 'CNNSimpleLSTM'),
-    'lstm_only': ('model_lstm_only', 'LSTMOnly'),
-    'residual': ('model_residual', 'CNNLSTMResidual'),
-    'gru': ('model_gru', 'CNNGRU'),
-    'attention': ('model_attention', 'CNNLSTMAttention'),
-}
+def load_model_registry(path=None):
+    config = configparser.ConfigParser()
+    file = Path(__file__).with_name("models.ini") if path is None else Path(path)
+    config.read(file)
+
+    registry = {}
+    for section in config.sections():
+        registry[section] = (
+            config[section]["module"],
+            config[section]["class"]
+        )
+    return registry
+
+MODEL_REGISTRY = load_model_registry()
 
 
 def get_model(model_name):
@@ -34,6 +38,26 @@ def get_model(model_name):
     module = __import__(module_name)
     model_class = getattr(module, class_name)
     return model_class()
+
+
+def set_seed(seed):
+    """Set all random seeds for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    # MPS doesn't need explicit seeding
+
+
+def get_best_device():
+    """Get best available device."""
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        return torch.device("mps")
+    else:
+        return torch.device("cpu")
 
 
 def calculate_metrics(y_true, y_pred, y_prob):
@@ -127,7 +151,7 @@ def evaluate(model, loader, criterion, device):
     
     avg_loss = total_loss / len(loader)
     metrics = calculate_metrics(all_labels, all_preds, all_probs)
-    metrics['accuracy'] = calculate_accuracy(all_labels, all_preds) # Add accuracy to metrics
+    metrics['accuracy'] = calculate_accuracy(all_labels, all_preds)
     
     return avg_loss, metrics
 
@@ -135,7 +159,7 @@ def evaluate(model, loader, criterion, device):
 def train_model(model, train_loader, val_loader, criterion, optimizer, 
                 device, num_epochs=50, patience=10, save_path="checkpoints/best_model.pt",
                 log_path=None, config=None):
-    """Train model w/ early stopping & comprehensive logging.
+    """Train model with early stopping and logging.
     
     Args:
         model: PyTorch model
@@ -222,10 +246,10 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
         history['epochs_completed'] = epoch + 1
         
         # Print progress
-        print(f"Epoch {epoch+1}/{num_epochs}")
-        print(f"  Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
-        print(f"  Val Loss: {val_loss:.4f}, Val Acc: {val_metrics['accuracy']:.4f}, "
-              f"F1: {val_metrics['f1']:.4f}, AUROC: {val_metrics['auroc']:.4f}")
+        print(f"Epoch {epoch+1}/{num_epochs} - "
+              f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} - "
+              f"Val Loss: {val_loss:.4f}, Val F1: {val_metrics['f1']:.4f}, "
+              f"Val AUROC: {val_metrics['auroc']:.4f}")
         
         # Update scheduler
         scheduler.step(val_metrics['f1'])
@@ -235,15 +259,21 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
             best_val_f1 = val_metrics['f1']
             history['best_val_f1'] = float(best_val_f1)
             history['best_epoch'] = epoch + 1
-            torch.save(model.state_dict(), save_path)
-            print(f"   Saved (F1: {best_val_f1:.4f})")
             epochs_no_improve = 0
+            torch.save(model.state_dict(), save_path)
+            print(f"  Best model saved (F1: {best_val_f1:.4f})")
         else:
             epochs_no_improve += 1
-            if epochs_no_improve >= patience:
-                print(f"Early stopping after {epoch+1} epochs")
-                history['stopped_early'] = True
-                break
+        
+        scheduler.step(val_metrics['f1'])
+        
+        with open(log_path, 'w') as f:
+            json.dump(history, f, indent=2)
+        
+        if epochs_no_improve >= patience:
+            print(f"Early stopping after {epoch+1} epochs: no improvement for {patience} epochs")
+            history['stopped_early'] = True
+            break
     
     # Record end time
     history['end_time'] = datetime.now().isoformat()
@@ -259,25 +289,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
     return model, history
 
 
-def set_seed(seed):
-    """Set all random seeds for reproducibility."""
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-
-
-def get_best_device():
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
-
-
-def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_dir=None,
-         num_epochs=50, patience=10, lr=1e-4, weight_decay=1e-4, batch_size=64):
+def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
+         num_epochs=50, patience=10, lr=1e-4, lstm_lr=None, weight_decay=1e-4, batch_size=64):
     """Train model w/ comprehensive logging of all params.
     
     Automatically generates unique timestamp-based filenames and logs ALL
@@ -291,6 +304,8 @@ def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_dir=None,
         num_epochs: Max training epochs
         patience: Early stopping patience
         lr: Learning rate
+        lstm_lr: If specified, LSTM components use this LR instead of main LR.
+            Typically 10-100x smaller than main LR (e.g., lr=1e-4, lstm_lr=1e-5)
         weight_decay: Weight decay (L2 reg)
         batch_size: Training batch size
     
@@ -325,7 +340,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_dir=None,
         
         # Model config
         'model_name': model_name,
-        'model_file': MODEL_REGISTRY[model_name][0] + '.py',  # TRACKS WHICH FILE do not remove
+        'model_file': MODEL_REGISTRY[model_name][0] + '.py',
         'model_class': MODEL_REGISTRY[model_name][1],
         
         # Data config
@@ -340,6 +355,8 @@ def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_dir=None,
         # Optimizer config
         'optimizer': 'Adam',
         'learning_rate': lr,
+        'lstm_learning_rate': lstm_lr,  # NEW: Track LSTM LR separately
+        'differential_lr': lstm_lr is not None,  # NEW: Flag for differential LR
         'weight_decay': weight_decay,
         
         # Scheduler config
@@ -368,7 +385,11 @@ def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_dir=None,
     print(f"Device: {device}")
     print(f"Model: {model_name} ({config['model_file']})")
     print(f"Split: {split_dir}")
-    print(f"LR: {lr}, WD: {weight_decay}, BS: {batch_size}")
+    if lstm_lr is not None:
+        print(f"LR: CNN={lr}, LSTM={lstm_lr} (differential)")
+    else:
+        print(f"LR: {lr} (uniform)")
+    print(f"WD: {weight_decay}, BS: {batch_size}")
     print(f"Epochs: {num_epochs}, Patience: {patience}, Seed: {seed}")
     print(f"Saving to: {save_dir}")
     
@@ -389,7 +410,20 @@ def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_dir=None,
     config['criterion'] = 'CrossEntropyLoss'
     config['class_weights'] = class_weights.tolist()
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    # MODIFIED: Create optimizer with differential LR if specified
+    if lstm_lr is not None and hasattr(model, 'get_param_groups'):
+        # Model supports differential learning rates
+        param_groups = model.get_param_groups(cnn_lr=lr, lstm_lr=lstm_lr)
+        optimizer = torch.optim.Adam(param_groups, weight_decay=weight_decay)
+        print(f"\nUsing differential learning rates:")
+        for group in param_groups:
+            n = sum(p.numel() for p in group['params'])
+            print(f"  {group['name']}: LR={group['lr']}, {n:,} params")
+    else:
+        # Standard single learning rate
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+        if lstm_lr is not None:
+            print(f"\nWARNING: Model {model_name} doesn't support differential LR, using uniform LR={lr}")
     
     # Train w/ config logging
     print("\nTraining...")
@@ -424,9 +458,10 @@ def main(model_name='cnn_lstm', seed=42, split_dir="data/splits", save_dir=None,
     # Save complete results
     with open(results_path, 'w') as f:
         json.dump(results, f, indent=2)
-    print(f"\n Results saved: {results_path}")
-    print(f" Model saved: {model_path}")
-    print(f" History saved: {log_path}")
+    
+    print(f"\nResults saved: {results_path}")
+    print(f"Model saved: {model_path}")
+    print(f"History saved: {log_path}")
     
     return results
 
@@ -436,7 +471,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Train model w/ comprehensive hyperparameter logging'
     )
-    parser.add_argument('--model', type=str, default='cnn_lstm',
+    parser.add_argument('--model', type=str, default='test',
                        choices=list(MODEL_REGISTRY.keys()),
                        help='Model architecture')
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
@@ -444,7 +479,9 @@ if __name__ == "__main__":
     parser.add_argument('--save_dir', type=str, default=None, help='Checkpoint dir (default: checkpoints/)')
     parser.add_argument('--num_epochs', type=int, default=50, help='Max epochs')
     parser.add_argument('--patience', type=int, default=10, help='Early stopping patience')
-    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
+    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate (CNN/main)')
+    parser.add_argument('--lstm_lr', type=float, default=None, 
+                       help='LSTM learning rate (if None, uses --lr for all components)')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     args = parser.parse_args()
@@ -457,6 +494,7 @@ if __name__ == "__main__":
         num_epochs=args.num_epochs,
         patience=args.patience,
         lr=args.lr,
+        lstm_lr=args.lstm_lr,
         weight_decay=args.weight_decay,
         batch_size=args.batch_size
     )

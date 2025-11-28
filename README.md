@@ -319,25 +319,25 @@ python create_splits.py
 
 # 2. Train baseline models
 python train.py --model cnn_only --seed 42
-python train.py --model cnn_lstm --seed 42
+python train.py --model cnn_lstm --lr 1e-4 --lstm_lr 1e-5 --seed 42
 
 # 3. Hyperparameter search
-python train.py --model cnn_lstm --lr 1e-3 --seed 42
-python train.py --model cnn_lstm --lr 5e-4 --seed 42
-python train.py --model cnn_lstm --lr 1e-5 --seed 42
+python train.py --model cnn_only --lr 1e-3 --seed 42
+python train.py --model cnn_only --lr 5e-4 --seed 42
+python train.py --model cnn_only --lr 1e-5 --seed 42
 
 # 4. Find best configuration
-python search_runs.py --model cnn_lstm --best f1
+python search_runs.py --model cnn_only --best f1
 
 # 5. Visualize comparison
-python plot_training.py checkpoints/cnn_lstm_*_history.json --compare --save figures/
+python plot_training.py checkpoints/cnn_only_*_history.json --compare --save figures/
 
 # 6. Test multiple seeds for best config
 for seed in 42 123 456; do
-    python train.py --model cnn_lstm --lr 5e-4 --seed $seed
+    python train.py --model cnn_only --lr 5e-4 --seed $seed
 done
 
 # 7. Compare stability
-python search_runs.py --model cnn_lstm --lr-min 5e-4 --lr-max 5e-4
+python search_runs.py --model cnn_only --lr-min 5e-4 --lr-max 5e-4
 ```
 
