@@ -6,7 +6,6 @@ import json
 import configparser
 from sklearn.metrics import f1_score, roc_auc_score, confusion_matrix
 from pathlib import Path
-from tqdm import tqdm
 from datetime import datetime
 
 from dataset import get_dataloaders
@@ -208,6 +207,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
         'val_sensitivity': [],
         'val_specificity': [],
         'learning_rate': [],
+        'learning_rate_dict': [],  # NEW: Add multi-LR tracking
         
         # Training metadata
         'epochs_completed': 0,
@@ -245,6 +245,16 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
         history['learning_rate'].append(float(current_lr))
         history['epochs_completed'] = epoch + 1
         
+        # Log all LRs if multiple param groups
+        if len(optimizer.param_groups) > 1:
+            lr_dict = {}
+            for i, group in enumerate(optimizer.param_groups):
+                name = group.get('name', f'group_{i}')
+                lr_dict[name] = float(group['lr'])
+            history['learning_rate_dict'].append(lr_dict)
+        else:
+            history['learning_rate_dict'].append(None)
+        
         # Print progress
         print(f"Epoch {epoch+1}/{num_epochs} - "
               f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} - "
@@ -265,6 +275,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
         else:
             epochs_no_improve += 1
         
+        # Step scheduler again
         scheduler.step(val_metrics['f1'])
         
         with open(log_path, 'w') as f:
@@ -290,7 +301,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
 
 
 def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
-         num_epochs=50, patience=10, lr=1e-4, lstm_lr=None, weight_decay=1e-4, batch_size=64):
+         num_epochs=50, patience=10, lr=1e-4, lstm_lr=None, weight_decay=1e-4, batch_size=64,
+         freeze_cnn=False):  # NEW: Add freeze_cnn parameter
     """Train model w/ comprehensive logging of all params.
     
     Automatically generates unique timestamp-based filenames and logs ALL
@@ -308,6 +320,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
             Typically 10-100x smaller than main LR (e.g., lr=1e-4, lstm_lr=1e-5)
         weight_decay: Weight decay (L2 reg)
         batch_size: Training batch size
+        freeze_cnn: If True, freeze CNN weights (only train LSTM)
     
     Returns:
         dict: Test metrics + history
@@ -355,9 +368,10 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
         # Optimizer config
         'optimizer': 'Adam',
         'learning_rate': lr,
-        'lstm_learning_rate': lstm_lr,  # NEW: Track LSTM LR separately
-        'differential_lr': lstm_lr is not None,  # NEW: Flag for differential LR
+        'lstm_learning_rate': lstm_lr,
+        'differential_lr': lstm_lr is not None,
         'weight_decay': weight_decay,
+        'freeze_cnn': freeze_cnn,  # NEW: Track if CNN is frozen
         
         # Scheduler config
         'scheduler': 'ReduceLROnPlateau',
@@ -389,6 +403,8 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
         print(f"LR: CNN={lr}, LSTM={lstm_lr} (differential)")
     else:
         print(f"LR: {lr} (uniform)")
+    if freeze_cnn:  # NEW: Print freeze status
+        print(f"CNN: FROZEN (only LSTM trains)")
     print(f"WD: {weight_decay}, BS: {batch_size}")
     print(f"Epochs: {num_epochs}, Patience: {patience}, Seed: {seed}")
     print(f"Saving to: {save_dir}")
@@ -401,6 +417,14 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
     
     # Model
     model = get_model(model_name).to(device)
+    
+    # NEW: Freeze CNN if requested
+    if freeze_cnn and hasattr(model, 'freeze_cnn'):
+        model.freeze_cnn()
+        print("✓ CNN frozen - only LSTM will train")
+    elif freeze_cnn:
+        print(f"WARNING: Model {model_name} doesn't support freeze_cnn()")
+    
     n_params = sum(p.numel() for p in model.parameters())
     config['model_parameters'] = n_params
     print(f"Parameters: {n_params:,}")
@@ -484,6 +508,8 @@ if __name__ == "__main__":
                        help='LSTM learning rate (if None, uses --lr for all components)')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
+    parser.add_argument('--freeze_cnn', action='store_true',  # NEW: Add freeze_cnn argument
+                       help='Freeze CNN weights (only train LSTM)')
     args = parser.parse_args()
     
     results = main(
@@ -496,5 +522,6 @@ if __name__ == "__main__":
         lr=args.lr,
         lstm_lr=args.lstm_lr,
         weight_decay=args.weight_decay,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        freeze_cnn=args.freeze_cnn  # NEW: Pass freeze_cnn parameter
     )

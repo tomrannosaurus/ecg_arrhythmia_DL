@@ -88,7 +88,7 @@ flowchart TD
 - [x] [T6] **Submit Intermediate Progress Report (Nov 14 @ 8:00 AM)**
 
 ### Week of **Nov 16–Nov 22**
-- [ ] [T7] Class-imbalance strategy (weighted loss/sampler/focal)
+- [x] [T7] Class-imbalance strategy (weighted loss/sampler/focal)
 - [ ] [T8] Data augmentation for ECG
 - [x] [T9] Regularization + hyperparameter tuning (lr, batch, hidden units)
 
@@ -132,18 +132,15 @@ python create_splits.py      # Create train/val/test splits
 
 ### Notes
 - Bandpass filter: 0.5-40 Hz
-- Segments: 5 sec (1500 samples @ 300 Hz)
-- Overlap: 50%
 - Recording tracking: Each segment linked to parent recording (prevents data leakage)
 - Splits: 70% train, 15% val, 15% test (stratified at recording level)
-- No data leakage: All segments from a recording stay in same split
 - Class weights: Use with `nn.CrossEntropyLoss(weight=weights)`
 
 
 ### 2. Train Model
 ```bash
 # Train with defaults
-python train.py --model cnn_lstm --seed 42
+python train.py --model cnn_lstm_fixed --seed 42
 
 # Train with custom hyperparameters
 python train.py --model cnn_only \
