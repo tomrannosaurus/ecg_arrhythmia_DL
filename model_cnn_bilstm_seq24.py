@@ -1,5 +1,5 @@
 """
-Model: CNN-LSTM Ultra V2 (Optimized Hyperparameters)
+Model: CNN-LSTM Optimized Hyperparameters
 
 Improvements over V1 (F1=0.5182):
 1. Larger LSTM: 64 -> 128 units (more capacity)
@@ -7,12 +7,8 @@ Improvements over V1 (F1=0.5182):
 3. Lower dropout: 0.2 -> 0.1 (like successful papers)
 4. Bidirectional LSTM (captures forward + backward patterns)
 
-Based on sensors2406306 paper (achieved 99% accuracy):
-- They use 10 timesteps, 100 LSTM units, 0.1 dropout
-- We use 24 timesteps, 128 LSTM units (bidirectional = 256 total), 0.1 dropout
-
 Usage:
-    python train_differential.py --model ultra_v2 --lr 1e-4 --lstm_lr 1e-5 --seed 42
+    python train.py --model cnn_bilstm_seq24 --seed 42
 """
 
 import torch

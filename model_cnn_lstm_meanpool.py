@@ -1,18 +1,16 @@
 """
-Model: CNN-LSTM Ultra V3 (Mean Pooling Variant)
+Model: CNN-LSTM Mean Pooling Variant
 
 Different approach from V2:
 1. Uses MEAN of all LSTM outputs (not just last state)
    - Captures information from entire sequence
    - More robust than single timestep
-2. Moderate sequence length: 20 timesteps (between V1's 16 and V2's 24)
-3. Moderate LSTM size: 96 units (between V1's 64 and V2's 128)
-4. Unidirectional (simpler than V2's bidirectional)
-
-Philosophy: Sometimes simpler + better aggregation > more complex
+2. Moderate sequence length: 20 timesteps 
+3. Moderate LSTM size: 96 units 
+4. Unidirectional LSTM
 
 Usage:
-    python train_differential.py --model ultra_v3 --lr 1e-4 --lstm_lr 1e-5 --seed 42
+    python train.py --model cnn_lstm_meanpool --seed 42
 """
 
 import torch
