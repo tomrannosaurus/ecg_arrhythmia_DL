@@ -153,14 +153,31 @@ python train.py --model cnn_only \
 ```
 
 ### Available Models
-- `cnn_only` - CNN baseline (no temporal modeling)
-- `cnn_lstm` - CNN + LSTM (serial architecture)
-- `bilstm` - CNN + Bidirectional LSTM
-- `simple_lstm` - CNN + simplified LSTM
-- `lstm_only` - LSTM only (diagnostic)
-- `residual` - CNN + LSTM with residual connections
-- `gru` - CNN + GRU
-- `attention` - CNN + LSTM with attention
+
+#### CNN baseline
+python train.py --model cnn_only --seed 42
+
+#### CNN + LSTM (serial architecture)
+python train.py --model cnn_lstm --seed 42
+
+#### CNN + Bidirectional LSTM
+python train.py --model bilstm --seed 42
+
+#### CNN + Simplified LSTM
+python train.py --model simple_lstm --seed 42
+
+#### LSTM only (diagnostic)
+python train.py --model lstm_only --seed 42
+
+#### CNN + LSTM with residual connections
+python train.py --model residual --seed 42
+
+#### CNN + GRU
+python train.py --model gru --seed 42
+
+#### CNN + LSTM with attention
+python train.py --model attention --seed 42
+
 
 
 ### 3. Search & Compare Runs
