@@ -1,14 +1,13 @@
 """
-Model: CNN-LSTM Ultra-Simple (Short Sequences)
+Model: CNN-LSTM Short Sequences
 
-KEY FIXES based on successful papers:
 1. Reduce sequence to ~16 timesteps (vs 187) - CRITICAL
 2. Lower dropout to 0.2 (vs 0.5)
 3. Single LSTM layer (64 units)
 4. Option to freeze CNN for two-stage training
 
 Usage:
-    python train_differential.py --model ultra --lr 1e-4 --lstm_lr 1e-5 --seed 42
+    python train.py --model cnn_lstm_seq16 --seed 42
 """
 
 import torch

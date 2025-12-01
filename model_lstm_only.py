@@ -5,8 +5,7 @@ No CNN, just LSTM directly on ECG signal.
 Useful for testing if CNN is actually helping.
 
 Usage:
-    from model_lstm_only import LSTMOnly
-    model = LSTMOnly()
+    python train.py --model lstm_only --seed 42
 """
 
 import torch

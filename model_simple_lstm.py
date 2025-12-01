@@ -7,8 +7,7 @@ Similar to seq16, but with reduced capacity:
 - Good for testing if model is too complex
 
 Usage:
-    from model_simple_lstm import CNNSimpleLSTM
-    model = CNNSimpleLSTM()
+    python train.py --model simple_lstm --seed 42
 """
 
 import torch

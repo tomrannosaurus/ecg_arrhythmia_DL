@@ -5,8 +5,7 @@ Adds skip connection from CNN output to post-LSTM features.
 Based on improved architecture from ultra series.
 
 Usage:
-    from model_residual import CNNLSTMResidual
-    model = CNNLSTMResidual()
+    python train.py --model residual --seed 42
 """
 
 import torch

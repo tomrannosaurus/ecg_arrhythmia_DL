@@ -5,8 +5,7 @@ Adds attention mechanism to weight LSTM outputs before classification.
 Based on improved architecture from ultra series.
 
 Usage:
-    from model_attention import CNNLSTMAttention
-    model = CNNLSTMAttention()
+    python train.py --model attention --seed 42
 """
 
 import torch

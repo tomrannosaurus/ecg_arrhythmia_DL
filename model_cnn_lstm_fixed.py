@@ -5,7 +5,7 @@ Model: CNN-LSTM with Critical Fixes
 - Designed for differential learning rates (CNN vs LSTM components)
 
 Usage:
-    python train.py --model test --lr 1e-4 --lstm_lr 1e-5 --seed 42
+    python train.py --model cnn_lstm_fixed --seed 42
 """
 
 import torch

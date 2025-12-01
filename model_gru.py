@@ -5,8 +5,7 @@ Based on improved architecture from ultra series, but using GRU instead of LSTM.
 GRU is simpler than LSTM (fewer parameters, faster training).
 
 Usage:
-    from model_gru import CNNGRU
-    model = CNNGRU()
+    python train.py --model gru --seed 42
 """
 
 import torch

@@ -9,8 +9,7 @@ Based on improved architecture from cnn_bilstm_seq24:
 - Single BiLSTM layer
 
 Usage:
-    from model_bilstm import CNNBiLSTM
-    model = CNNBiLSTM()
+    python train.py --model bilstm --seed 42
 """
 
 import torch

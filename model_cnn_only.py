@@ -3,8 +3,7 @@ Model: CNN-Only (No LSTM)
 Diagnostic model to verify CNN can learn independently.
 
 Usage:
-    from model_cnn_only import SimpleCNN
-    model = SimpleCNN()
+    python train.py --model cnn_only --seed 42
 """
 
 import torch
