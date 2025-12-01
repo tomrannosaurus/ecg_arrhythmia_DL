@@ -11,6 +11,7 @@ Different approach from V2:
 
 Usage:
     python train.py --model cnn_lstm_meanpool --seed 42
+    python train.py --model cnn_lstm_meanpool --lr 1e-4 --lstm_lr 1e-5 --seed 42
 """
 
 import torch

@@ -9,6 +9,7 @@ Model: CNN-LSTM Bidirectional w/ Optimized Hyperparameters
 
 Usage:
     python train.py --model cnn_bilstm_seq24 --seed 42
+    python train.py --model cnn_bilstm_seq24 --lr 1e-4 --lstm_lr 1e-5 --seed 42
 """
 
 import torch

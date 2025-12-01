@@ -8,6 +8,7 @@ Model: CNN-LSTM Short Sequences
 
 Usage:
     python train.py --model cnn_lstm_seq16 --seed 42
+    python train.py --model cnn_lstm_seq16 --lr 1e-4 --lstm_lr 1e-5 --seed 42
 """
 
 import torch
