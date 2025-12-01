@@ -1,7 +1,7 @@
 """
 Model: CNN-GRU (Improved Architecture)
 
-Based on improved architecture from ultra series, but using GRU instead of LSTM.
+Based on improved architecture from CNN-LSTM series, but using GRU instead of LSTM.
 GRU is simpler than LSTM (fewer parameters, faster training).
 
 Usage:

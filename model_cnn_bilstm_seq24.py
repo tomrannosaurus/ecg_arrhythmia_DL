@@ -1,11 +1,11 @@
 """
-Model: CNN-LSTM Optimized Hyperparameters
+Model: CNN-LSTM Bidirectional w/ Optimized Hyperparameters
 
-Improvements over V1 (F1=0.5182):
-1. Larger LSTM: 64 -> 128 units (more capacity)
-2. Longer sequences: 16 -> 24 timesteps (more context)
-3. Lower dropout: 0.2 -> 0.1 (like successful papers)
-4. Bidirectional LSTM (captures forward + backward patterns)
+- Longer sequences (24 timesteps)
+- No BatchNorm in CNN
+- LayerNorm before LSTM
+- Low dropout (0.1)
+- Single BiLSTM layer
 
 Usage:
     python train.py --model cnn_bilstm_seq24 --seed 42
