@@ -6,6 +6,8 @@ Model: CNN-LSTM with Critical Fixes
 
 Usage:
     python train.py --model cnn_lstm_fixed --seed 42
+    python train.py --model cnn_lstm_fixed --lr 1e-4 --lstm_lr 1e-5 --seed 42
+    python train.py --model cnn_lstm_fixed --lr 1e-4 --lstm_lr 1e-4 --seed 42
 """
 
 import torch
@@ -112,7 +114,7 @@ class CNNLSTMFixed(nn.Module):
         Args:
             cnn_lr: Learning rate for CNN
             lstm_lr: Learning rate for LSTM (typically 10-100x smaller)
-            fc_lr: Learning rate for classifier (optional, defaults to cnn_lr)
+            fc_lr: Learning rate for classifier (optional, defaults to cnn_lr) Not currently implemented in train.py
         
         Returns:
             List of parameter group dicts for optimizer
