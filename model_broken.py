@@ -8,6 +8,9 @@ class CNNLSTM(nn.Module):
     Architecture:
         Input (batch, 1500) -> CNN feature extraction -> 
         LSTM temporal modeling -> FC classifier -> Output (batch, 4)
+
+    Usage:
+        python train.py --model cnn_lstm --seed 42
     """
     
     def __init__(self, input_size=1500, num_classes=4, 

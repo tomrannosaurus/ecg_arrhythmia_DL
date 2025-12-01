@@ -6,6 +6,7 @@ Model: CNN-LSTM Bidirectional w/ Optimized Hyperparameters
 - LayerNorm before LSTM
 - Low dropout (0.1)
 - Single BiLSTM layer
+- Differential learning rates supported
 
 Usage:
     python train.py --model cnn_bilstm_seq24 --seed 42
@@ -146,14 +147,6 @@ if __name__ == "__main__":
     print(f"CNNBiLSTMSeq24 (Optimized)")
     print(f"  Trainable parameters: {total:,}")
     print(f"  Frozen parameters: {frozen:,}")
-    
-    # Compare to V1
-    from model_ultra import CNNLSTMUltra
-    v1 = CNNLSTMUltra()
-    v1_params, _ = count_parameters(v1)
-    print(f"\nCNNLSTMUltra V1 (Baseline)")
-    print(f"  Trainable parameters: {v1_params:,}")
-    print(f"\nDifference: +{total - v1_params:,} params")
     
     # Test forward pass
     x = torch.randn(8, 1500)

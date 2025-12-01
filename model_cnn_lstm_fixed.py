@@ -6,8 +6,8 @@ Model: CNN-LSTM with Critical Fixes
 
 Usage:
     python train.py --model cnn_lstm_fixed --seed 42
-    python train.py --model cnn_lstm_fixed --lr 1e-4 --lstm_lr 1e-5 --seed 42
-    python train.py --model cnn_lstm_fixed --lr 1e-4 --lstm_lr 1e-4 --seed 42
+    python train.py --model cnn_lstm_fixed --lr 1e-3 --lstm_lr 1e-4 --seed 42
+    python train.py --model cnn_lstm_fixed --lr 1e-3 --lstm_lr 1e-5 --seed 42
 """
 
 import torch
