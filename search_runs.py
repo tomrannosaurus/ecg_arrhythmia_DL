@@ -31,7 +31,6 @@ Usage:
 import json
 import argparse
 from pathlib import Path
-from datetime import datetime
 import pandas as pd
 
 
@@ -201,12 +200,12 @@ def find_best_run(metric='f1', checkpoint_dir="checkpoints"):
     print(f"Weight Decay: {best_run['wd']:.2e}")
     print(f"Batch Size: {best_run['bs']}")
     print(f"Seed: {best_run['seed']}")
-    print(f"\nPerformance:")
+    print("\nPerformance:")
     print(f"  Test F1:      {best_run['test_f1']:.4f}")
     print(f"  Test AUROC:   {best_run['test_auroc']:.4f}")
     print(f"  Test Accuracy: {best_run['test_acc']:.4f}")
     print(f"  Test Loss:    {best_run['test_loss']:.4f}")
-    print(f"\nTraining:")
+    print("\nTraining:")
     print(f"  Epochs: {best_run['epochs']}")
     print(f"  Best Epoch: {best_run['best_epoch']}")
     print(f"  Early Stop: {best_run['early_stop']}")
@@ -217,7 +216,7 @@ def find_best_run(metric='f1', checkpoint_dir="checkpoints"):
 
 
 def search_runs(model=None, lr_min=None, lr_max=None, lstm_lr_min=None, lstm_lr_max=None,
-                seed=None, freeze_cnn=None, checkpoint_dir="checkpoints"):
+                seed=None, freeze_cnn=None, device=None, checkpoint_dir="checkpoints"):
     """Search runs with filters."""
     run_files = find_all_runs(checkpoint_dir)
     
@@ -243,7 +242,7 @@ def search_runs(model=None, lr_min=None, lr_max=None, lstm_lr_min=None, lstm_lr_
             if lr_max and (main_lr is None or main_lr > lr_max):
                 continue
             
-            # LSTM LR filter (NEW)
+            # LSTM LR filter 
             lstm_lr = config.get('lstm_learning_rate')
             if lstm_lr_min and (lstm_lr is None or lstm_lr < lstm_lr_min):
                 continue
@@ -254,11 +253,15 @@ def search_runs(model=None, lr_min=None, lr_max=None, lstm_lr_min=None, lstm_lr_
             if seed and config['seed'] != seed:
                 continue
             
-            # CNN frozen filter (NEW)
+            # CNN frozen filter 
             if freeze_cnn is not None:
                 if config.get('freeze_cnn', False) != freeze_cnn:
                     continue
             
+            # Device filter
+            if device and config.get('device') != device: 
+                continue
+
             matching.append(extract_run_summary(results))
             
         except Exception as e:
@@ -412,6 +415,7 @@ Examples:
                        help='Filter for runs without frozen CNN')
     parser.add_argument('--compare', nargs='+',
                        help='Compare specific runs by ID')
+    parser.add_argument('--device', type=str, help='Filter by device (mps, cuda, cpu)')
     
     args = parser.parse_args()
     
@@ -440,6 +444,7 @@ Examples:
             lstm_lr_max=args.lstm_lr_max,
             seed=args.seed,
             freeze_cnn=freeze_cnn_filter,
+            device=args.device,  
             checkpoint_dir=args.checkpoint_dir
         )
     

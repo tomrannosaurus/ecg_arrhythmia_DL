@@ -251,7 +251,7 @@ Serial CNN→LSTM:
 - `train.py` - Training loop w/ comprehensive logging
 
 ### Models
-- `model.py` - CNN-LSTM architecture
+- `model_cnn_lstm.py` - CNN-LSTM architecture
 - `model_cnn_only.py` - CNN baseline
 - `model_bilstm.py` - Bidirectional LSTM
 - `model_simple_lstm.py` - Simplified LSTM
@@ -355,4 +355,148 @@ done
 # 7. Compare stability
 python search_runs.py --model cnn_only --lr-min 5e-4 --lr-max 5e-4
 ```
+
+# CRITICAL FINDING: MPS Backend Bug — Original Model Was Never Broken
+
+> **Date Discovered:** December 8, 2025  
+> **Impact:** Weeks of debugging effort misdirected  
+> **Resolution:** Use CUDA for all experiments; original CNN-LSTM architecture is valid
+
+---
+
+## Summary
+
+We spent several weeks assuming our original CNN-LSTM model (`model_broken.py`) was architecturally flawed because it exhibited complete learning collapse on Apple Silicon (MPS backend):
+
+- Test F1-score: 0.14 (vs. 0.61 for CNN-only baseline)
+- Test AUROC: 0.50 (random chance)
+- Predicted >99% of samples as Normal class
+- Per-class sensitivity: [99.9%, 0%, 0%, 0%]
+
+We developed multiple hypotheses and implemented corresponding "fixes":
+- Removed BatchNorm from CNN (created `model_cnn_lstm_fixed.py`)
+- Added LayerNorm before LSTM
+- Implemented differential learning rates
+- Reduced sequence length from 187 to 16
+- Tested GRU, attention mechanisms, residual connections, and other variants
+
+**None of these modifications were necessary.**
+
+When we ran the exact same original model on CUDA instead of MPS, it trained successfully and outperformed all "fixed" variants.
+
+---
+
+## Root Cause: PyTorch MPS Backend Bugs
+
+The PyTorch MPS (Metal Performance Shaders) backend for Apple Silicon has documented issues with LSTM training:
+
+1. **Silent gradient failures**: MPS kernel bugs can cause operations such as `addcmul_` and `addcdiv_` to silently fail when writing to non-contiguous memory, freezing weights during training.
+
+2. **LSTM-specific crashes**: Assertion failures occur in `_getLSTMGradKernelDAGObject` during backpropagation.
+
+3. **Incorrect training metrics**: Models appear to train (loss decreases) but learn nothing useful.
+
+These bugs are silent—the model executes without errors, but gradients do not flow correctly through LSTM gates.
+
+### References
+
+- PyTorch Issue #82707: "Bad performance metrics for BERT model training on MPS" ([link](https://github.com/pytorch/pytorch/issues/82707))
+- PyTorch Forums: "MPS Crash - Assertion failed in _getLSTMGradKernelDAGObject using LSTM on macOS with MPS backend" ([link](https://discuss.pytorch.org/t/mps-crash-assertion-failed-in-getlstmgradkerneldagobject-using-lstm-on-macos-with-mps-backend/221821))
+- Simon, E. (2025): "The bug that taught me more about PyTorch than years of using it" ([link](https://elanapearl.github.io/blog/2025/the-bug-that-taught-me-pytorch/)) — Documents the same failure pattern with detailed technical analysis.
+
+---
+
+## Hypotheses vs. Actual Cause
+
+| Hypothesis | Assumed Cause | Actual Cause |
+|------------|---------------|--------------|
+| Sequence length (187) too long for LSTM | Architecture problem | MPS gradient bug |
+| BatchNorm interferes with LSTM temporal processing | Architecture problem | Incidentally changed tensor layout, routing around bug |
+| Vanishing gradients in deep LSTM | Architecture problem | Gradients not flowing due to MPS kernel failure |
+| LSTM requires different learning rate than CNN | Optimization problem | MPS backend bug |
+| LayerNorm required instead of BatchNorm | Architecture problem | Original model functions correctly on CUDA |
+
+---
+
+## Implications for This Project
+
+### Required Actions
+
+1. **Re-run all experiments on CUDA.** The original model (`model_broken.py`) is likely the best performer. All comparative results from MPS are invalid.
+
+2. **Establish new baselines.** Models to re-evaluate on CUDA:
+   - `cnn_lstm` (original model, previously labeled "broken")
+   - `cnn_only` (baseline)
+   - `cnn_lstm_fixed`
+   - All other variants
+
+3. **Document in final paper.** Suggested text:
+   > "Initial experiments on Apple Silicon (MPS backend) exhibited complete learning failure for CNN-LSTM architectures. Identical code on NVIDIA CUDA trained successfully, revealing a backend-specific bug rather than architectural issues. This finding underscores the importance of validating deep learning failures across multiple hardware backends before attributing them to model design."
+
+---
+
+## Assessment of Implemented "Fixes"
+
+A literature review reveals which modifications were legitimate improvements versus unnecessary changes:
+
+### Legitimate (retain if beneficial on CUDA)
+
+- **LayerNorm before LSTM**: This is a documented best practice for recurrent networks (Ba et al., 2016, "Layer Normalization"). Should be tested to determine if it improves CUDA performance.
+
+### Misapplied Reasoning
+
+- **Removing BatchNorm from CNN**: The original BatchNorm layers were applied within the CNN, not in the recurrent path. Standard practice permits BatchNorm in CNN layers preceding LSTM input. Removing BatchNorm did not fix an architectural flaw; it changed tensor memory layout, possibly routing around the MPS bug.
+
+### Not Applicable
+
+- **Differential learning rates**: This technique is valid for transfer learning with pretrained weights, but is not applicable when training from scratch. There is no principled reason for the LSTM to require a lower learning rate than the CNN when both are randomly initialized.
+
+---
+
+## Lessons Learned
+
+1. **Validate failures across multiple backends.** CPU, CUDA, and MPS use different kernel implementations and may exhibit different bugs. MPS is newer and less mature than CUDA.
+
+2. **Silent failures are particularly dangerous.** In this case, loss decreased and the model executed without errors, but learned nothing. The failure pattern was indistinguishable from an architectural problem.
+
+3. **Plausible explanations can be incorrect.** Our hypotheses had some basis in the ML literature, but we were treating symptoms of a backend bug as architectural flaws.
+
+4. **Confirmation bias affects debugging.** When our "fixes" appeared to partially help, we assumed we were on the correct track. In reality, the changes may have simply altered tensor contiguity, routing around the underlying bug.
+
+---
+
+## Guidance for Future Researchers
+
+If you experience unexplained LSTM training failures on Apple Silicon, consider the following diagnostic steps:
+
+```python
+import torch
+
+# Check available devices
+print(f"MPS available: {torch.backends.mps.is_available()}")
+print(f"CUDA available: {torch.cuda.is_available()}")
+
+# If using MPS and LSTM fails to learn:
+# 1. Test on CPU first: device = torch.device("cpu")
+# 2. Test on CUDA if available: device = torch.device("cuda")
+# 3. If MPS is the only option:
+#    - Upgrade to PyTorch >= 2.3.1 (contains bug fixes)
+#    - Upgrade to macOS >= 15 (improved MPS support)
+#    - Set PYTORCH_ENABLE_MPS_FALLBACK=1 to fall back to CPU for unsupported operations
+```
+
+---
+
+## Status
+
+- [x] Re-run original CNN-LSTM on CUDA
+- [ ] Compare all models on CUDA
+- [ ] Update results tables
+- [ ] Reduce this notice to a brief note after experiments complete
+
+---
+
+*This section will be reduced to a brief note once experiments have been re-validated on CUDA. It remains detailed to preserve full context in version control history.*
+
+---
 

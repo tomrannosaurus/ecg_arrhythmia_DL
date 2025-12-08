@@ -97,6 +97,10 @@ def extract_model_info(results):
         # Additional info
         'Run_ID': config['run_id'],
         'Date': config['datetime'],
+        'Device': config.get('device', 'N/A'),
+        'User': config.get('user', 'N/A'),
+        'Platform': config.get('platform', 'N/A'),
+        'Torch_Vers': config.get('torch_version', 'N/A'),
     }
     
     return info
@@ -187,10 +191,10 @@ def print_table(df, format='text'):
     if df is None:
         return
     
-    # Select columns for display (exclude raw LR values, use LR_Display instead)
+    # Select columns for display
     display_cols = ['Model', 'LR_Display', 'Diff_LR', 'CNN_Frozen', 
                     'Test_F1', 'Test_AUROC', 'Test_Accuracy', 'Test_Loss',
-                    'Epochs', 'Best_Epoch', 'Seed']
+                    'Epochs', 'Best_Epoch', 'Seed','Device']
     
     # Filter to only existing columns
     display_cols = [col for col in display_cols if col in df.columns]

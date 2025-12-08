@@ -4,6 +4,8 @@ import numpy as np
 import random
 import json
 import configparser
+import getpass
+import platform
 from sklearn.metrics import f1_score, roc_auc_score, confusion_matrix
 from pathlib import Path
 from datetime import datetime
@@ -392,6 +394,12 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
     # Setup
     device = get_best_device()
     
+    # Track device/user for debugging MPS issues
+    config['device'] = str(device)
+    config['user'] = getpass.getuser()
+    config['platform'] = platform.system()
+    config['torch_version'] = torch.__version__
+
     # Print config summary
     print("="*70)
     print(f"RUN: {run_id}")
@@ -404,7 +412,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
     else:
         print(f"LR: {lr} (uniform)")
     if freeze_cnn:  # NEW: Print freeze status
-        print(f"CNN: FROZEN (only LSTM trains)")
+        print("CNN: FROZEN (only LSTM trains)")
     print(f"WD: {weight_decay}, BS: {batch_size}")
     print(f"Epochs: {num_epochs}, Patience: {patience}, Seed: {seed}")
     print(f"Saving to: {save_dir}")
@@ -439,7 +447,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
         # Model supports differential learning rates
         param_groups = model.get_param_groups(cnn_lr=lr, lstm_lr=lstm_lr)
         optimizer = torch.optim.Adam(param_groups, weight_decay=weight_decay)
-        print(f"\nUsing differential learning rates:")
+        print("\nUsing differential learning rates:")
         for group in param_groups:
             n = sum(p.numel() for p in group['params'])
             print(f"  {group['name']}: LR={group['lr']}, {n:,} params")

@@ -260,7 +260,7 @@ def print_summary(history, name="Model"):
     # Learning rate info
     lr_groups = extract_lr_values(history)
     if lr_groups:
-        print(f"\nLearning rate(s):")
+        print("\nLearning rate(s):")
         if len(lr_groups) == 1:
             group_name = list(lr_groups.keys())[0]
             initial_lr = lr_groups[group_name][0]
