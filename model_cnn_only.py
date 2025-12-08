@@ -9,11 +9,11 @@ Usage:
 import torch
 import torch.nn as nn
 
-class SimpleCNN(nn.Module):
+class CNNOnly(nn.Module):
     """Simplified CNN-only model for debugging."""
     
     def __init__(self, num_classes=4):
-        super(SimpleCNN, self).__init__()
+        super(CNNOnly, self).__init__()
         
         self.features = nn.Sequential(
             nn.Conv1d(1, 32, kernel_size=7, padding=3),
@@ -53,8 +53,8 @@ def count_parameters(model):
 
 
 if __name__ == "__main__":
-    model = SimpleCNN()
-    print(f"SimpleCNN parameters: {count_parameters(model):,}")
+    model = CNNOnly()
+    print(f"CNNOnly parameters: {count_parameters(model):,}")
     # dummy forward pass to verify shapes
     x = torch.randn(8, 1500)  # (batch_size, sequence_length)
     y = model(x)
