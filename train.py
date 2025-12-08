@@ -48,7 +48,6 @@ def set_seed(seed):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-    # MPS doesn't need explicit seeding
 
 
 def get_best_device():
@@ -209,7 +208,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
         'val_sensitivity': [],
         'val_specificity': [],
         'learning_rate': [],
-        'learning_rate_dict': [],  # NEW: Add multi-LR tracking
+        'learning_rate_dict': [], 
         
         # Training metadata
         'epochs_completed': 0,
@@ -373,8 +372,8 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
         'lstm_learning_rate': lstm_lr,
         'differential_lr': lstm_lr is not None,
         'weight_decay': weight_decay,
-        'freeze_cnn': freeze_cnn,  # NEW: Track if CNN is frozen
-        
+        'freeze_cnn': freeze_cnn,
+                
         # Scheduler config
         'scheduler': 'ReduceLROnPlateau',
         'scheduler_mode': 'max',
