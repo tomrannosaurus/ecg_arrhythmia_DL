@@ -71,12 +71,15 @@ def extract_model_info(results):
         # Model identification
         'Model': config['model_name'],
         
-        # Hyperparameters - NEW: show all LRs
+        # Data split info 
+        'Split_Dir': config.get('split_dir', 'N/A'),
+        
+        # Hyperparameters 
         'LR': main_lr,  # Main/CNN LR for filtering
         'LSTM_LR': lstm_lr,  # LSTM LR (None if uniform)
         'LR_Display': lr_display,  # Formatted string for display
         'Diff_LR': config.get('differential_lr', False),  # Boolean flag
-        'CNN_Frozen': config.get('freeze_cnn', False),  # NEW
+        'CNN_Frozen': config.get('freeze_cnn', False),  
         'Weight_Decay': config['weight_decay'],
         'Batch_Size': config['batch_size'],
         'Seed': config['seed'],
@@ -192,9 +195,9 @@ def print_table(df, format='text'):
         return
     
     # Select columns for display
-    display_cols = ['Model', 'LR_Display', 'Diff_LR', 'CNN_Frozen', 
+    display_cols = ['Model', 'Split_Dir', 'LR_Display', 'Diff_LR', 'CNN_Frozen', 
                     'Test_F1', 'Test_AUROC', 'Test_Accuracy', 'Test_Loss',
-                    'Epochs', 'Best_Epoch', 'Seed','Device']
+                    'Epochs', 'Best_Epoch', 'Seed', 'Device']
     
     # Filter to only existing columns
     display_cols = [col for col in display_cols if col in df.columns]
@@ -236,13 +239,13 @@ def save_table(df, output_path, format='csv'):
     
     if format == 'excel' or output_path.suffix in ['.xlsx', '.xls']:
         df.to_excel(output_path, index=False)
-        print(f" Table saved to {output_path}")
+        print(f"Table saved to {output_path}")
     elif format == 'latex' or output_path.suffix == '.tex':
         df.to_latex(output_path, index=False)
-        print(f" Table saved to {output_path}")
+        print(f"Table saved to {output_path}")
     else:  # default to CSV
         df.to_csv(output_path, index=False)
-        print(f" Table saved to {output_path}")
+        print(f"Table saved to {output_path}")
 
 
 def main():
