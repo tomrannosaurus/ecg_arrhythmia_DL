@@ -32,18 +32,51 @@ def find_all_runs(checkpoint_dir="checkpoints"):
     return sorted(checkpoint_dir.glob("*_results.json"))
 
 
+def format_lr_for_table(config):
+    """Format learning rate(s) for table display.
+    
+    Returns:
+        tuple: (main_lr, lstm_lr, lr_display_string)
+    """
+    main_lr = config.get('learning_rate', None)
+    lstm_lr = config.get('lstm_learning_rate', None)
+    lr_groups = config.get('learning_rate_groups', {})
+    
+    # Create display string
+    if lr_groups and len(lr_groups) > 1:
+        # Multiple LRs
+        lr_display = ", ".join([f"{k}={v:.2e}" for k, v in sorted(lr_groups.items())])
+    elif lstm_lr is not None:
+        # Differential LR (old style)
+        lr_display = f"CNN={main_lr:.2e}, LSTM={lstm_lr:.2e}"
+    elif main_lr is not None:
+        # Single LR
+        lr_display = f"{main_lr:.2e}"
+    else:
+        lr_display = "N/A"
+    
+    return main_lr, lstm_lr, lr_display
+
+
 def extract_model_info(results):
     """Extract comprehensive info from results for the table."""
     config = results['config']
     test = results['test']
     history = results['history']
     
+    # Extract LR info
+    main_lr, lstm_lr, lr_display = format_lr_for_table(config)
+    
     info = {
         # Model identification
         'Model': config['model_name'],
         
-        # Hyperparameters
-        'LR': config['learning_rate'],
+        # Hyperparameters - NEW: show all LRs
+        'LR': main_lr,  # Main/CNN LR for filtering
+        'LSTM_LR': lstm_lr,  # LSTM LR (None if uniform)
+        'LR_Display': lr_display,  # Formatted string for display
+        'Diff_LR': config.get('differential_lr', False),  # Boolean flag
+        'CNN_Frozen': config.get('freeze_cnn', False),  # NEW
         'Weight_Decay': config['weight_decay'],
         'Batch_Size': config['batch_size'],
         'Seed': config['seed'],
@@ -119,12 +152,15 @@ def format_dataframe(df):
     df_display = df.copy()
     
     # format floating point columns
-    float_cols = ['LR', 'Weight_Decay', 'Test_F1', 'Test_AUROC', 'Test_Accuracy', 'Test_Loss', 'Val_F1']
+    float_cols = ['LR', 'LSTM_LR', 'Weight_Decay', 'Test_F1', 'Test_AUROC', 
+                  'Test_Accuracy', 'Test_Loss', 'Val_F1']
     for col in float_cols:
         if col in df_display.columns:
-            if col in ['LR', 'Weight_Decay']:
-                # scientific notation for small values
-                df_display[col] = df_display[col].apply(lambda x: f'{x:.2e}')
+            if col in ['LR', 'LSTM_LR', 'Weight_Decay']:
+                # scientific notation for small values (handle None for LSTM_LR)
+                df_display[col] = df_display[col].apply(
+                    lambda x: f'{x:.2e}' if x is not None else 'N/A'
+                )
             else:
                 # 4 decimal places for metrics
                 df_display[col] = df_display[col].apply(lambda x: f'{x:.4f}')
@@ -148,38 +184,44 @@ def print_table(df, format='text'):
         df: pandas DataFrame
         format: 'text', 'markdown', or 'latex'
     """
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', 200)
-    pd.set_option('display.max_colwidth', 30)
+    if df is None:
+        return
     
-    print("\n" + "="*150)
-    print("MODEL COMPARISON TABLE (Sorted by Test F1 Score)")
-    print("="*150)
-    print()
+    # Select columns for display (exclude raw LR values, use LR_Display instead)
+    display_cols = ['Model', 'LR_Display', 'Diff_LR', 'CNN_Frozen', 
+                    'Test_F1', 'Test_AUROC', 'Test_Accuracy', 'Test_Loss',
+                    'Epochs', 'Best_Epoch', 'Seed']
     
-    # format for display
-    df_display = format_dataframe(df) if format == 'text' else df
+    # Filter to only existing columns
+    display_cols = [col for col in display_cols if col in df.columns]
+    df_display = df[display_cols]
+    
+    # Format numeric values
+    df_formatted = format_dataframe(df_display)
+    
+    print("\n" + "="*120)
+    print("MODEL RESULTS TABLE")
+    print("="*120)
+    print(f"Total models: {len(df)}")
+    print("="*120)
     
     if format == 'markdown':
-        print(df.to_markdown(index=False, floatfmt='.4f'))
+        print(df_formatted.to_markdown(index=False))
     elif format == 'latex':
-        print(df.to_latex(index=False, float_format='%.4f'))
+        print(df_formatted.to_latex(index=False))
     else:
-        print(df_display.to_string(index=False))
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', 150)
+        pd.set_option('display.max_colwidth', 50)
+        print(df_formatted.to_string(index=False))
     
-    print()
-    print("="*150)
-    print(f"Total models: {len(df)}")
-    print(f"Best F1: {df['Test_F1'].max():.4f} (Model: {df.loc[df['Test_F1'].idxmax(), 'Model']})")
-    print(f"Best AUROC: {df['Test_AUROC'].max():.4f} (Model: {df.loc[df['Test_AUROC'].idxmax(), 'Model']})")
-    print(f"Best Accuracy: {df['Test_Accuracy'].max():.4f} (Model: {df.loc[df['Test_Accuracy'].idxmax(), 'Model']})")
-    print("="*150)
+    print("="*120)
     print()
 
 
 def save_table(df, output_path, format='csv'):
     """
-    Save the table to a file.
+    Save table to file.
     
     Args:
         df: pandas DataFrame
@@ -190,13 +232,13 @@ def save_table(df, output_path, format='csv'):
     
     if format == 'excel' or output_path.suffix in ['.xlsx', '.xls']:
         df.to_excel(output_path, index=False)
-        print(f"Table saved to {output_path}")
+        print(f" Table saved to {output_path}")
     elif format == 'latex' or output_path.suffix == '.tex':
         df.to_latex(output_path, index=False)
-        print(f"Table saved to {output_path}")
+        print(f" Table saved to {output_path}")
     else:  # default to CSV
         df.to_csv(output_path, index=False)
-        print(f"Table saved to {output_path}")
+        print(f" Table saved to {output_path}")
 
 
 def main():

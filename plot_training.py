@@ -30,6 +30,32 @@ def load_history(json_path):
         return json.load(f)
 
 
+def extract_lr_values(history):
+    """Extract learning rate values from history.
+    
+    Handles both old format (single 'learning_rate' list) and 
+    new format (list of dicts with multiple LRs).
+    
+    Returns:
+        dict: {group_name: [lr_values_per_epoch]}
+    """
+    lr_data = history.get('learning_rates', history.get('learning_rate', []))
+    
+    if not lr_data:
+        return {}
+    
+    # Check format of first entry
+    if isinstance(lr_data[0], dict):
+        # New format: list of dicts
+        lr_groups = {}
+        for group_name in lr_data[0].keys():
+            lr_groups[group_name] = [epoch_lrs[group_name] for epoch_lrs in lr_data]
+        return lr_groups
+    else:
+        # Old format: single list of floats
+        return {'default': lr_data}
+
+
 def plot_single_run(history, title=None, save_path=None):
     """
     Plot training curves for a single run.
@@ -68,6 +94,7 @@ def plot_single_run(history, title=None, save_path=None):
     ax.set_xlabel('Epoch', fontsize=12)
     ax.set_ylabel('Accuracy', fontsize=12)
     ax.set_title('Accuracy Curves', fontsize=14, fontweight='bold')
+    ax.set_ylim([0, 1])
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3)
     
@@ -76,14 +103,14 @@ def plot_single_run(history, title=None, save_path=None):
     
     # F1 and AUROC
     ax = axes[1, 0]
-    ax.plot(epochs, history['val_f1'], 'purple', label='Val F1', linewidth=2)
-    ax.plot(epochs, history['val_auroc'], 'orange', label='Val AUROC', linewidth=2)
+    ax.plot(epochs, history['val_f1'], 'g-', label='Val F1', linewidth=2)
+    ax.plot(epochs, history['val_auroc'], 'm-', label='Val AUROC', linewidth=2)
     ax.set_xlabel('Epoch', fontsize=12)
     ax.set_ylabel('Score', fontsize=12)
     ax.set_title('Validation Metrics', fontsize=14, fontweight='bold')
+    ax.set_ylim([0, 1])
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3)
-    ax.set_ylim([0, 1])
     
     if 'best_epoch' in history:
         ax.axvline(x=best_epoch, color='g', linestyle='--', alpha=0.5)
@@ -94,34 +121,26 @@ def plot_single_run(history, title=None, save_path=None):
     x = np.arange(len(class_names))
     width = 0.35
     
-    # Get last epoch's metrics
-    last_sensitivity = history['val_sensitivity'][-1]
-    last_specificity = history['val_specificity'][-1]
+    sens = history['val_sensitivity'][-1]
+    spec = history['val_specificity'][-1]
     
-    bars1 = ax.bar(x - width/2, last_sensitivity, width, label='Sensitivity', color='skyblue')
-    bars2 = ax.bar(x + width/2, last_specificity, width, label='Specificity', color='lightcoral')
+    ax.bar(x - width/2, sens, width, label='Sensitivity', alpha=0.8)
+    ax.bar(x + width/2, spec, width, label='Specificity', alpha=0.8)
     
     ax.set_xlabel('Class', fontsize=12)
     ax.set_ylabel('Score', fontsize=12)
     ax.set_title('Per-Class Metrics (Final Epoch)', fontsize=14, fontweight='bold')
     ax.set_xticks(x)
-    ax.set_xticklabels(class_names, fontsize=10)
-    ax.legend(fontsize=10)
+    ax.set_xticklabels(class_names)
     ax.set_ylim([0, 1])
+    ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3, axis='y')
-    
-    # Add value labels on bars
-    for bars in [bars1, bars2]:
-        for bar in bars:
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height,
-                   f'{height:.2f}', ha='center', va='bottom', fontsize=8)
     
     plt.tight_layout()
     
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f" Saved figure to: {save_path}")
+        print(f"✓ Saved training curves to: {save_path}")
     else:
         plt.show()
     
@@ -130,7 +149,7 @@ def plot_single_run(history, title=None, save_path=None):
 
 def plot_comparison(histories, labels, save_path=None):
     """
-    Compare training curves from multiple runs.
+    Plot comparison of multiple runs.
     
     Creates a 2x2 grid comparing key metrics across runs.
     """
@@ -178,7 +197,7 @@ def plot_comparison(histories, labels, save_path=None):
     
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f" Saved comparison to: {save_path}")
+        print(f"✓ Saved comparison to: {save_path}")
     else:
         plt.show()
     
@@ -186,20 +205,41 @@ def plot_comparison(histories, labels, save_path=None):
 
 
 def plot_learning_rate(history, title=None, save_path=None):
-    """Plot learning rate schedule over epochs."""
-    epochs = range(1, len(history['learning_rate']) + 1)
+    """Plot learning rate schedule over epochs.
     
-    plt.figure(figsize=(10, 4))
-    plt.plot(epochs, history['learning_rate'], 'b-', linewidth=2)
-    plt.xlabel('Epoch', fontsize=12)
-    plt.ylabel('Learning Rate', fontsize=12)
-    plt.title(title or 'Learning Rate Schedule', fontsize=14, fontweight='bold')
-    plt.grid(True, alpha=0.3)
-    plt.yscale('log')
+    Handles both single LR and differential LR (multiple parameter groups).
+    """
+    lr_groups = extract_lr_values(history)
+    
+    if not lr_groups:
+        print("Warning: No learning rate data found in history")
+        return
+    
+    epochs = range(1, len(list(lr_groups.values())[0]) + 1)
+    
+    fig, ax = plt.subplots(figsize=(10, 4))
+    
+    # Plot each LR group
+    colors = plt.cm.tab10(np.linspace(0, 1, len(lr_groups)))
+    for (group_name, lr_values), color in zip(sorted(lr_groups.items()), colors):
+        label = group_name if len(lr_groups) > 1 else 'Learning Rate'
+        ax.plot(epochs, lr_values, label=label, linewidth=2, color=color)
+    
+    ax.set_xlabel('Epoch', fontsize=12)
+    ax.set_ylabel('Learning Rate', fontsize=12)
+    ax.set_title(title or 'Learning Rate Schedule', fontsize=14, fontweight='bold')
+    
+    if len(lr_groups) > 1:
+        ax.legend(fontsize=10)
+    
+    ax.grid(True, alpha=0.3)
+    ax.set_yscale('log')
+    
+    plt.tight_layout()
     
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f" Saved LR schedule to: {save_path}")
+        print(f"✓ Saved LR schedule to: {save_path}")
     else:
         plt.show()
     
@@ -216,6 +256,24 @@ def print_summary(history, name="Model"):
     print(f"  Total epochs: {history['epochs_completed']}")
     print(f"  Best epoch: {history['best_epoch']}")
     print(f"  Early stopping: {'Yes' if history['stopped_early'] else 'No'}")
+    
+    # Learning rate info
+    lr_groups = extract_lr_values(history)
+    if lr_groups:
+        print(f"\nLearning rate(s):")
+        if len(lr_groups) == 1:
+            group_name = list(lr_groups.keys())[0]
+            initial_lr = lr_groups[group_name][0]
+            final_lr = lr_groups[group_name][-1]
+            print(f"  Initial: {initial_lr:.2e}")
+            print(f"  Final:   {final_lr:.2e}")
+        else:
+            print("  Initial LRs:")
+            for group_name, lr_values in sorted(lr_groups.items()):
+                print(f"    {group_name}: {lr_values[0]:.2e}")
+            print("  Final LRs:")
+            for group_name, lr_values in sorted(lr_groups.items()):
+                print(f"    {group_name}: {lr_values[-1]:.2e}")
     
     print(f"\nBest validation metrics (Epoch {history['best_epoch']}):")
     best_idx = history['best_epoch'] - 1
