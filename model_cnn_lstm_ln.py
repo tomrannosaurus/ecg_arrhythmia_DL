@@ -1,7 +1,7 @@
 """
-Model: CNN-LSTM with Critical Fixes
-- Removes BatchNorm before LSTM (interferes with temporal processing)
-- Adds LayerNorm after permute (proper normalization for LSTM input)
+Model: CNN-LSTM Enhanced
+- BatchNorm in CNN blocks (critical for CNN training stability)
+- LayerNorm after LSTM output (normalizes hidden states before classification)
 - Designed for differential learning rates (CNN vs LSTM components)
 
 Usage:
@@ -14,37 +14,43 @@ import torch
 import torch.nn as nn
 
 
-class CNNLSTMFixed(nn.Module):
-    """CNN-LSTM with architecture fixes for proper training.
-    
-    Key changes from original:
-    1. NO BatchNorm in CNN - BatchNorm statistics computed on channels
-       don't translate properly when those channels become LSTM features
-    2. LayerNorm applied AFTER permute - normalizes features per timestep
+class CNNLSTMLN(nn.Module):
+    """CNN-LSTM with enhanced architecture for proper training.
+    s
+    Key enhancements from original:
+    1. BatchNorm in CNN blocks - maintains CNN training stability
+    2. LayerNorm AFTER LSTM - normalizes hidden states before classification
+       (This is the correct placement - after temporal processing, not before)
     3. Separate component groups for differential learning rates
+    
+    Note: LayerNorm BEFORE LSTM was empirically found to hurt performance.
+    LayerNorm AFTER LSTM is a common practice that helps classifier stability.
     """
     
     def __init__(self, input_size=1500, num_classes=4,
                  cnn_channels=[32, 64, 128],
                  lstm_hidden=128, lstm_layers=2, dropout=0.5):
-        super(CNNLSTMFixed, self).__init__()
+        super(CNNLSTMLN, self).__init__()
         
-        # CNN feature extractor - NO BATCH NORM
+        # CNN feature extractor - WITH BATCH NORM
         self.cnn = nn.Sequential(
             # Conv block 1
             nn.Conv1d(1, cnn_channels[0], kernel_size=7, padding=3),
+            nn.BatchNorm1d(cnn_channels[0]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
             # Conv block 2
             nn.Conv1d(cnn_channels[0], cnn_channels[1], kernel_size=5, padding=2),
+            nn.BatchNorm1d(cnn_channels[1]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
             # Conv block 3
             nn.Conv1d(cnn_channels[1], cnn_channels[2], kernel_size=3, padding=1),
+            nn.BatchNorm1d(cnn_channels[2]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
@@ -52,10 +58,6 @@ class CNNLSTMFixed(nn.Module):
         
         # Calculate CNN output size
         self.cnn_output_size = input_size // 8  # Three MaxPool2d layers
-        
-        # LayerNorm applied AFTER permute (normalizes across feature dimension)
-        # This is correct: normalizes the 128 features at each of the 187 timesteps
-        self.layer_norm = nn.LayerNorm(cnn_channels[2])
         
         # LSTM temporal modeling
         self.lstm = nn.LSTM(
@@ -65,6 +67,10 @@ class CNNLSTMFixed(nn.Module):
             batch_first=True,
             dropout=dropout if lstm_layers > 1 else 0
         )
+        
+        # LayerNorm AFTER LSTM (normalizes hidden states)
+        # This is the correct placement - helps stabilize classifier training
+        self.layer_norm = nn.LayerNorm(lstm_hidden)
         
         # Classifier
         self.fc = nn.Sequential(
@@ -81,9 +87,7 @@ class CNNLSTMFixed(nn.Module):
         
         Returns:
             output tensor of shape (batch, 4)
-        """
-        batch_size = x.size(0)
-        
+        """        
         # Add channel dimension for Conv1d: (batch, 1500) -> (batch, 1, 1500)
         x = x.unsqueeze(1)
         
@@ -93,15 +97,15 @@ class CNNLSTMFixed(nn.Module):
         # Reshape for LSTM: (batch, 128, seq_len) -> (batch, seq_len, 128)
         x = x.permute(0, 2, 1)
         
-        # Apply LayerNorm NOW (after permute, before LSTM)
-        # This normalizes the 128 features at each timestep
-        x = self.layer_norm(x)
-        
         # LSTM: (batch, seq_len, 128) -> (batch, seq_len, lstm_hidden)
         x, (h_n, c_n) = self.lstm(x)
         
         # Use last hidden state: (batch, lstm_hidden)
         x = h_n[-1]
+        
+        # Normalize LSTM output before classifier
+        # This helps stabilize classifier training without interfering with temporal learning
+        x = self.layer_norm(x)
         
         # Classifier: (batch, lstm_hidden) -> (batch, 4)
         x = self.fc(x)
@@ -124,8 +128,8 @@ class CNNLSTMFixed(nn.Module):
         
         return [
             {'params': self.cnn.parameters(), 'lr': cnn_lr, 'name': 'cnn'},
-            {'params': self.layer_norm.parameters(), 'lr': lstm_lr, 'name': 'layer_norm'},
             {'params': self.lstm.parameters(), 'lr': lstm_lr, 'name': 'lstm'},
+            {'params': self.layer_norm.parameters(), 'lr': fc_lr, 'name': 'layer_norm'},
             {'params': self.fc.parameters(), 'lr': fc_lr, 'name': 'fc'}
         ]
 
@@ -137,7 +141,7 @@ def count_parameters(model):
 
 if __name__ == "__main__":
     # Test model
-    model = CNNLSTMFixed()
+    model = CNNLSTMLN()
     print(f"Model parameters: {count_parameters(model):,}")
     
     # Test forward pass

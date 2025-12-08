@@ -1,13 +1,6 @@
 """
 Model: CNN with Bidirectional LSTM (Improved Architecture)
 
-Based on improved architecture from cnn_bilstm_seq24:
-- Short sequences (16 timesteps)
-- No BatchNorm in CNN
-- LayerNorm before LSTM
-- Low dropout (0.1)
-- Single BiLSTM layer
-
 Usage:
     python train.py --model bilstm --seed 42
 """
@@ -28,29 +21,29 @@ class CNNBiLSTM(nn.Module):
         
         self.target_seq_len = target_seq_len
         
-        # CNN feature extractor - NO BATCH NORM
+        # CNN feature extractor - WITH BATCH NORM
         self.cnn = nn.Sequential(
             # Block 1
             nn.Conv1d(1, cnn_channels[0], kernel_size=7, padding=3),
+            nn.BatchNorm1d(cnn_channels[0]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
             # Block 2  
             nn.Conv1d(cnn_channels[0], cnn_channels[1], kernel_size=5, padding=2),
+            nn.BatchNorm1d(cnn_channels[1]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
             # Block 3
             nn.Conv1d(cnn_channels[1], cnn_channels[2], kernel_size=3, padding=1),
+            nn.BatchNorm1d(cnn_channels[2]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
         )
-        
-        # LayerNorm for LSTM input
-        self.layer_norm = nn.LayerNorm(cnn_channels[2])
         
         # Bidirectional LSTM - Single layer
         self.lstm = nn.LSTM(
@@ -90,9 +83,6 @@ class CNNBiLSTM(nn.Module):
         
         # Prepare for LSTM: (batch, 128, 16) -> (batch, 16, 128)
         x = x.permute(0, 2, 1)
-        
-        # Normalize
-        x = self.layer_norm(x)
         
         # BiLSTM: (batch, 16, 128) -> (batch, 16, 256)
         lstm_out, (h_n, c_n) = self.lstm(x)

@@ -26,29 +26,29 @@ class CNNSimpleLSTM(nn.Module):
         
         self.target_seq_len = target_seq_len
         
-        # CNN feature extractor - NO BATCH NORM
+        # CNN feature extractor - WITH BATCH NORM
         self.cnn = nn.Sequential(
             # Block 1
             nn.Conv1d(1, cnn_channels[0], kernel_size=7, padding=3),
+            nn.BatchNorm1d(cnn_channels[0]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
             # Block 2
             nn.Conv1d(cnn_channels[0], cnn_channels[1], kernel_size=5, padding=2),
+            nn.BatchNorm1d(cnn_channels[1]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
             # Block 3
             nn.Conv1d(cnn_channels[1], cnn_channels[2], kernel_size=3, padding=1),
+            nn.BatchNorm1d(cnn_channels[2]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
         )
-        
-        # LayerNorm
-        self.layer_norm = nn.LayerNorm(cnn_channels[2])
         
         # Simple LSTM (smaller)
         self.lstm = nn.LSTM(
@@ -87,7 +87,6 @@ class CNNSimpleLSTM(nn.Module):
         
         # Prepare for LSTM
         x = x.permute(0, 2, 1)
-        x = self.layer_norm(x)
         
         # LSTM
         lstm_out, (h_n, c_n) = self.lstm(x)

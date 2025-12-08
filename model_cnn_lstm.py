@@ -80,8 +80,7 @@ class CNNLSTM(nn.Module):
         Returns:
             output tensor of shape (batch, 4)
         """
-        batch_size = x.size(0)
-        
+                
         # Add channel dimension for Conv1d: (batch, 1500) -> (batch, 1, 1500)
         x = x.unsqueeze(1)
         
@@ -103,6 +102,29 @@ class CNNLSTM(nn.Module):
         return x
 
 
+
+    def get_param_groups(self, cnn_lr, lstm_lr, fc_lr=None):
+        """Return parameter groups for differential learning rates.
+        
+        Args:
+            cnn_lr: Learning rate for CNN
+            lstm_lr: Learning rate for LSTM (typically 10-100x smaller)
+            fc_lr: Learning rate for classifier (optional, defaults to cnn_lr) Not currently implemented in train.py
+        
+        Returns:
+            List of parameter group dicts for optimizer
+        """
+        if fc_lr is None:
+            fc_lr = cnn_lr
+        
+        return [
+            {'params': self.cnn.parameters(), 'lr': cnn_lr, 'name': 'cnn'},
+            {'params': self.lstm.parameters(), 'lr': lstm_lr, 'name': 'lstm'},
+            {'params': self.layer_norm.parameters(), 'lr': fc_lr, 'name': 'layer_norm'},
+            {'params': self.fc.parameters(), 'lr': fc_lr, 'name': 'fc'}
+        ]
+
+
 def count_parameters(model):
     """Count trainable parameters."""
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -118,3 +140,10 @@ if __name__ == "__main__":
     y = model(x)
     print(f"\nInput shape: {x.shape}")
     print(f"Output shape: {y.shape}")
+    
+    # Test parameter groups
+    print("\nParameter groups for differential LR:")
+    param_groups = model.get_param_groups(cnn_lr=1e-4, lstm_lr=1e-5)
+    for group in param_groups:
+        n_params = sum(p.numel() for p in group['params'])
+        print(f"  {group['name']}: {n_params:,} params, LR={group['lr']}")

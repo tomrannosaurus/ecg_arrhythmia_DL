@@ -30,29 +30,29 @@ class CNNLSTMMeanPool(nn.Module):
         
         self.target_seq_len = target_seq_len
         
-        # CNN feature extractor - NO BATCH NORM
+        # CNN feature extractor - WITH BATCH NORM
         self.cnn = nn.Sequential(
             # Block 1
             nn.Conv1d(1, cnn_channels[0], kernel_size=7, padding=3),
+            nn.BatchNorm1d(cnn_channels[0]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
             # Block 2  
             nn.Conv1d(cnn_channels[0], cnn_channels[1], kernel_size=5, padding=2),
+            nn.BatchNorm1d(cnn_channels[1]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
             # Block 3
             nn.Conv1d(cnn_channels[1], cnn_channels[2], kernel_size=3, padding=1),
+            nn.BatchNorm1d(cnn_channels[2]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
         )
-        
-        # LayerNorm for LSTM input
-        self.layer_norm = nn.LayerNorm(cnn_channels[2])
         
         # LSTM
         self.lstm = nn.LSTM(
@@ -71,9 +71,7 @@ class CNNLSTMMeanPool(nn.Module):
             nn.Linear(48, num_classes)
         )
     
-    def forward(self, x):
-        batch_size = x.size(0)
-        
+    def forward(self, x):        
         # CNN: (batch, 1500) -> (batch, 1, 1500) -> (batch, 128, 187)
         x = x.unsqueeze(1)
         x = self.cnn(x)
@@ -83,9 +81,6 @@ class CNNLSTMMeanPool(nn.Module):
         
         # Prepare for LSTM: (batch, 128, seq) -> (batch, seq, 128)
         x = x.permute(0, 2, 1)
-        
-        # Normalize
-        x = self.layer_norm(x)
         
         # LSTM: (batch, seq, 128) -> (batch, seq, lstm_hidden)
         lstm_out, (h_n, c_n) = self.lstm(x)
@@ -118,7 +113,6 @@ class CNNLSTMMeanPool(nn.Module):
         
         return [
             {'params': self.cnn.parameters(), 'lr': cnn_lr, 'name': 'cnn'},
-            {'params': self.layer_norm.parameters(), 'lr': lstm_lr, 'name': 'layer_norm'},
             {'params': self.lstm.parameters(), 'lr': lstm_lr, 'name': 'lstm'},
             {'params': self.fc.parameters(), 'lr': fc_lr, 'name': 'fc'}
         ]
@@ -135,7 +129,7 @@ if __name__ == "__main__":
     # Test model
     model = CNNLSTMMeanPool()
     total, frozen = count_parameters(model)
-    print(f"CNNLSTMMeanPool (Mean Pooling)")
+    print("CNNLSTMMeanPool (Mean Pooling)")
     print(f"  Trainable parameters: {total:,}")
     
     # Test forward pass

@@ -26,29 +26,29 @@ class CNNGRU(nn.Module):
         self.target_seq_len = target_seq_len
         self.bidirectional = bidirectional
         
-        # CNN feature extractor - NO BATCH NORM
+        # CNN feature extractor - WITH BATCH NORM
         self.cnn = nn.Sequential(
             # Block 1
             nn.Conv1d(1, cnn_channels[0], kernel_size=7, padding=3),
+            nn.BatchNorm1d(cnn_channels[0]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
             # Block 2  
             nn.Conv1d(cnn_channels[0], cnn_channels[1], kernel_size=5, padding=2),
+            nn.BatchNorm1d(cnn_channels[1]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
             
             # Block 3
             nn.Conv1d(cnn_channels[1], cnn_channels[2], kernel_size=3, padding=1),
+            nn.BatchNorm1d(cnn_channels[2]),
             nn.ReLU(),
             nn.MaxPool1d(2),
             nn.Dropout(dropout),
         )
-        
-        # LayerNorm for GRU input
-        self.layer_norm = nn.LayerNorm(cnn_channels[2])
         
         # GRU (simpler than LSTM - no cell state)
         self.gru = nn.GRU(
@@ -89,9 +89,6 @@ class CNNGRU(nn.Module):
         
         # Prepare for GRU: (batch, 128, seq) -> (batch, seq, 128)
         x = x.permute(0, 2, 1)
-        
-        # Normalize
-        x = self.layer_norm(x)
         
         # GRU: (batch, seq, 128) -> (batch, seq, gru_hidden)
         gru_out, h_n = self.gru(x)
