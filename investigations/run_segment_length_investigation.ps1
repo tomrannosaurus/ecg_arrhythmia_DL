@@ -29,12 +29,12 @@ Write-Host "====================================================================
 Write-Host "STEP 1: Preparing 5-second segment data"
 Write-Host "======================================================================"
 
-if (-not (Test-Path "data/splits_5s")) {
+if (-not (Test-Path "data/splits")) {
     Write-Host "Creating 5s processed data..."
-    python preprocessing.py --segment_sec 5 --save_dir data/processed_5s
+    python preprocessing.py --segment_sec 5 --save_dir data/processed
     
     Write-Host "Creating 5s splits..."
-    python create_splits.py --processed_dir data/processed_5s --split_dir data/splits_5s --seed 42
+    python create_splits.py --processed_dir data/processed_5s --split_dir data/splits --seed 42
 } else {
     Write-Host "5s splits already exist, skipping..."
 }
@@ -71,7 +71,7 @@ foreach ($seed in $SEEDS) {
         Write-Host "----------------------------------------------------------------------"
         Write-Host "Training $model (seed=$seed) on 5s segments..."
         Write-Host "----------------------------------------------------------------------"
-        python train.py --model $model --seed $seed --split_dir data/splits_5s
+        python train.py --model $model --seed $seed --split_dir data/splits
     }
 }
 

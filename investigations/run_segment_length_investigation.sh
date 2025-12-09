@@ -30,12 +30,12 @@ echo "======================================================================"
 echo "STEP 1: Preparing 5-second segment data"
 echo "======================================================================"
 
-if [ ! -d "data/splits_5s" ]; then
+if [ ! -d "data/splits" ]; then
     echo "Creating 5s processed data..."
-    python preprocessing.py --segment_sec 5 --save_dir data/processed_5s
+    python preprocessing.py --segment_sec 5 --save_dir data/processed
     
     echo "Creating 5s splits..."
-    python create_splits.py --processed_dir data/processed_5s --split_dir data/splits_5s --seed 42
+    python create_splits.py --processed_dir data/processed --split_dir data/splits --seed 42
 else
     echo "5s splits already exist, skipping..."
 fi
@@ -72,7 +72,7 @@ for seed in $SEEDS; do
         echo "----------------------------------------------------------------------"
         echo "Training $model (seed=$seed) on 5s segments..."
         echo "----------------------------------------------------------------------"
-        python train.py --model $model --seed $seed --split_dir data/splits_5s
+        python train.py --model $model --seed $seed --split_dir data/splits
     done
 done
 
