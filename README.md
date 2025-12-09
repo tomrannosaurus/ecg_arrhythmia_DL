@@ -329,12 +329,12 @@ Each training run automatically logs:
 ## Workflow
 ```bash
 # 1. Preprocess (with recording tracking)
-python preprocessing.py
-python create_splits.py
+python preprocessing.py --segment_sec 5 --save_dir data/processed_5s
+python create_splits.py --processed_dir data/processed_5s --split_dir data/splits_5s --seed 42
 
-# 2. Train baseline models
+# 2. Train models
 python train.py --model cnn_only --seed 42
-python train.py --model cnn_lstm --lr 1e-4 --lstm_lr 1e-5 --seed 42
+python train.py --model cnn_lstm --seed 42
 
 # 3. Hyperparameter search
 python train.py --model cnn_only --lr 1e-3 --seed 42
@@ -342,7 +342,7 @@ python train.py --model cnn_only --lr 5e-4 --seed 42
 python train.py --model cnn_only --lr 1e-5 --seed 42
 
 # 4. Find best configuration
-python search_runs.py --model cnn_only --best f1
+python search_runs.py --best f1
 
 # 5. Visualize comparison
 python plot_training.py checkpoints/cnn_only_*_history.json --compare --save figures/
