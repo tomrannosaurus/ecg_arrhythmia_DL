@@ -9,3 +9,13 @@ RUN,MODEL,SPLIT_DIR,SEED,LR,RNN_LR,WD,BS,FREEZE
 8,cnn_lstm_ln,data/splits_20s,39536,1.06e-05,3.82e-06,1.13e-05,64,false
 9,cnn_lstm_ln,data/splits_10s,17544,8.43e-05,9.72e-06,4.58e-06,256,false
 10,cnn_lstm_seq16,data/splits,83094,1.63e-04,3.09e-05,2.15e-05,192,false
+11,cnn_lstm_seq16,data/splits_10s,65968,9.24e-04,1.35e-05,1.86e-05,256,false
+12,cnn_lstm_seq16,data/splits,64800,1.20e-05,2.72e-06,2.83e-06,64,false
+13,cnn_bilstm_seq24,data/splits_10s,13490,8.20e-04,9.11e-05,1.73e-06,256,true
+14,cnn_bilstm_seq24,data/splits,45422,5.26e-05,2.44e-06,7.51e-06,32,false
+15,cnn_bilstm_seq24,data/splits,47181,4.62e-04,8.26e-05,4.73e-04,128,false
+16,cnn_lstm_meanpool,data/splits,75800,5.93e-05,7.43e-05,9.42e-04,192,false
+17,cnn_lstm_meanpool,data/splits,49460,8.59e-04,6.43e-05,8.34e-05,64,false
+18,cnn_lstm_meanpool,data/splits_20s,46060,5.88e-05,2.29e-06,7.95e-05,64,false
+19,bilstm,data/splits_10s,74980,3.28e-05,1.65e-06,1.41e-04,256,false
+20,bilstm,data/splits_10s,42496,8.58e-04,7.29e-05,7.06e-04,128,false
