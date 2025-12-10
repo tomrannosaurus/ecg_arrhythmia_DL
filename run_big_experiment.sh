@@ -130,8 +130,10 @@ for model in "${MODELS[@]}"; do
                 echo "First git push failed; trying WIP-before-rebase flow..."
 
                 # Make sure everything is staged again (in case anything changed)
-                git add -A
-                git commit -m "WIP before rebase (auto)" || echo "No WIP changes to commit"
+
+                git commit -m "auto run push" || echo "Nothing to commit"
+                git pull --rebase origin main
+                git push origin main
 
                 if ! git pull --rebase origin "$BRANCH"; then
                     echo "git pull --rebase failed again (conflicts?)."

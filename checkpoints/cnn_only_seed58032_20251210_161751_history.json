@@ -1,0 +1,128 @@
+{
+  "config": {
+    "run_id": "cnn_only_seed58032_20251210_161751",
+    "timestamp": "20251210_161751",
+    "datetime": "2025-12-10T16:17:51.861145",
+    "model_name": "cnn_only",
+    "model_file": "model_cnn_only.py",
+    "model_class": "CNNOnly",
+    "split_dir": "data/splits_10s",
+    "batch_size": 32,
+    "num_epochs": 100,
+    "patience": 10,
+    "seed": 58032,
+    "optimizer": "Adam",
+    "learning_rate": 6.27e-05,
+    "lstm_learning_rate": 2.82e-06,
+    "differential_lr": true,
+    "weight_decay": 4.92e-05,
+    "freeze_cnn": false,
+    "scheduler": "ReduceLROnPlateau",
+    "scheduler_mode": "max",
+    "scheduler_factor": 0.5,
+    "scheduler_patience": 5,
+    "gradient_clip_norm": 1.0,
+    "save_dir": "checkpoints",
+    "model_path": "checkpoints/cnn_only_seed58032_20251210_161751.pt",
+    "log_path": "checkpoints/cnn_only_seed58032_20251210_161751_history.json",
+    "results_path": "checkpoints/cnn_only_seed58032_20251210_161751_results.json",
+    "device": "cuda",
+    "user": "navak",
+    "platform": "Linux",
+    "torch_version": "2.8.0+cu128",
+    "model_parameters": 44228,
+    "criterion": "CrossEntropyLoss",
+    "class_weights": [
+      0.42863065004348755,
+      2.954738140106201,
+      0.8054326772689819,
+      11.496771812438965
+    ]
+  },
+  "train_loss": [
+    1.3349165795092097,
+    1.2506344230351096,
+    1.1694363123047613
+  ],
+  "train_acc": [
+    0.34614544660406205,
+    0.33725392318971703,
+    0.3462078432596013
+  ],
+  "val_loss": [
+    1.3045984550153829,
+    1.2837986556906678,
+    1.417258827585608
+  ],
+  "val_acc": [
+    0.35393419170243207,
+    0.3367668097281831,
+    0.3402002861230329
+  ],
+  "val_f1": [
+    0.3725862655216377,
+    0.3877882739388935,
+    0.364682254087692
+  ],
+  "val_auroc": [
+    0.5473481466927093,
+    0.5547952234764078,
+    0.5517845149330755
+  ],
+  "val_sensitivity": [
+    [
+      0.3185602350636631,
+      0.007911392405063292,
+      0.49952380952380954,
+      0.6839080459770115
+    ],
+    [
+      0.3582272282076396,
+      0.07911392405063292,
+      0.32285714285714284,
+      0.9367816091954023
+    ],
+    [
+      0.5080803134182175,
+      0.0189873417721519,
+      0.05904761904761905,
+      0.9597701149425287
+    ]
+  ],
+  "val_specificity": [
+    [
+      0.7515485203028217,
+      0.9902485058194401,
+      0.5627811860940696,
+      0.7661384976525821
+    ],
+    [
+      0.764280798348245,
+      0.9872601446995911,
+      0.7247443762781186,
+      0.6296948356807511
+    ],
+    [
+      0.5822436338609773,
+      0.996225228059138,
+      0.9498977505112475,
+      0.5409330985915493
+    ]
+  ],
+  "learning_rate": [
+    6.27e-05,
+    6.27e-05,
+    6.27e-05
+  ],
+  "learning_rate_dict": [
+    null,
+    null,
+    null
+  ],
+  "epochs_completed": 3,
+  "best_epoch": 2,
+  "best_val_f1": 0.3877882739388935,
+  "stopped_early": false,
+  "start_time": "2025-12-10T16:17:52.698675",
+  "end_time": null
+}
