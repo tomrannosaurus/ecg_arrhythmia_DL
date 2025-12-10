@@ -428,7 +428,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
     # NEW: Freeze CNN if requested
     if freeze_cnn and hasattr(model, 'freeze_cnn'):
         model.freeze_cnn()
-        print("✓ CNN frozen - only RNN will train")
+        print("CNN frozen - only RNN will train")
     elif freeze_cnn:
         print(f"WARNING: Model {model_name} doesn't support freeze_cnn()")
     
