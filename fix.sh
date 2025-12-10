@@ -1,38 +1,24 @@
 #!/bin/bash
 
-# Auto-sync loop for git main branch
-# Runs forever until you Ctrl+C
+EXPERIMENT_SCRIPT="./run_big_experiment.sh"
 
-BRANCH="main"
-
-echo "=== Starting auto git sync loop (branch: $BRANCH) ==="
-echo "Press Ctrl+C to stop."
+echo "=== Supervisor for $EXPERIMENT_SCRIPT ==="
+echo "Will restart on failure. Ctrl+C to stop."
+echo
 
 while true; do
-    echo ""
-    echo "----- Sync cycle at $(date) -----"
+    echo "[$(date)] Starting experiment..."
+    bash "$EXPERIMENT_SCRIPT"
+    EXIT_CODE=$?
 
-    # 1) Stage ALL changes
-    git add -A
-
-    # 2) Commit (if nothing to commit, ignore)
-    git commit -m "WIP before rebase" >/dev/null 2>&1 || echo "Nothing to commit"
-
-    # 3) Fetch + rebase
-    if ! git pull --rebase origin "$BRANCH"; then
-        echo "ERROR: rebase failed (probably merge conflict)."
-        echo "Fix manually, then restart this script."
-        exit 1
-    fi
-
-    # 4) Push
-    if ! git push origin "$BRANCH"; then
-        echo "Push failed (network or permissions issue)."
-        echo "Will retry on next loop..."
+    if [ $EXIT_CODE -eq 0 ]; then
+        echo "[$(date)] Experiment finished normally (exit code 0). Not restarting."
+        break
     else
-        echo "Push OK."
+        echo "[$(date)] Experiment crashed/failed with exit code $EXIT_CODE."
+        echo "Restarting in 30 seconds..."
+        git add -A 
+        git commit -m "comitting runs!" --rebase origin main git push origin main
+        sleep 30
     fi
-
-    # Sleep between cycles (adjust delay as needed)
-    sleep 10
 done

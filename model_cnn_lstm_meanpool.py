@@ -11,7 +11,7 @@ Different approach from V2:
 
 Usage:
     python train.py --model cnn_lstm_meanpool --seed 42
-    python train.py --model cnn_lstm_meanpool --lr 1e-4 --lstm_lr 1e-5 --seed 42
+    python train.py --model cnn_lstm_meanpool --lr 1e-4 --rnn_lr 1e-5 --seed 42
 """
 
 import torch
@@ -106,14 +106,14 @@ class CNNLSTMMeanPool(nn.Module):
             param.requires_grad = True
         print("CNN unfrozen")
     
-    def get_param_groups(self, cnn_lr, lstm_lr, fc_lr=None):
+    def get_param_groups(self, cnn_lr, rnn_lr, fc_lr=None):
         """Return parameter groups for differential learning rates."""
         if fc_lr is None:
             fc_lr = cnn_lr
         
         return [
             {'params': self.cnn.parameters(), 'lr': cnn_lr, 'name': 'cnn'},
-            {'params': self.lstm.parameters(), 'lr': lstm_lr, 'name': 'lstm'},
+            {'params': self.lstm.parameters(), 'lr': rnn_lr, 'name': 'lstm'},
             {'params': self.fc.parameters(), 'lr': fc_lr, 'name': 'fc'}
         ]
 
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     
     # Show parameter groups
     print("\nParameter groups:")
-    param_groups = model.get_param_groups(cnn_lr=1e-4, lstm_lr=1e-5)
+    param_groups = model.get_param_groups(cnn_lr=1e-4, rnn_lr=1e-5)
     for group in param_groups:
         n_params = sum(p.numel() for p in group['params'])
         print(f"  {group['name']}: {n_params:,} params, LR={group['lr']}")

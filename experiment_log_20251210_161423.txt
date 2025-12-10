@@ -20,3 +20,6 @@ RUN,MODEL,SPLIT_DIR,SEED,LR,RNN_LR,WD,BS,FREEZE
 19,bilstm,data/splits_10s,74980,3.28e-05,1.65e-06,1.41e-04,256,false
 20,bilstm,data/splits_10s,42496,8.58e-04,7.29e-05,7.06e-04,128,false
 21,bilstm,data/splits,84340,3.78e-05,9.30e-06,6.61e-05,64,true
+22,simple_lstm,data/splits,53860,3.00e-05,9.80e-06,9.96e-04,64,false
+23,simple_lstm,data/splits,25744,3.16e-04,2.23e-05,3.73e-04,128,true
+24,simple_lstm,data/splits_10s,95675,9.83e-04,5.47e-06,1.45e-06,192,false
