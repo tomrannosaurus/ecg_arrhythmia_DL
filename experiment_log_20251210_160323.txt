@@ -5,3 +5,7 @@ RUN,MODEL,SPLIT_DIR,SEED,LR,RNN_LR,WD,BS,FREEZE
 4,cnn_only,data/splits_20s,85828,3.53e-05,2.96e-06,2.64e-05,32,false
 5,cnn_only,data/splits_10s,50000,1.31e-05,7.61e-05,1.93e-05,256,true
 6,cnn_only,data/splits_20s,41408,2.88e-04,6.53e-06,5.23e-05,64,true
+7,cnn_lstm_ln,data/splits,30939,1.17e-05,1.16e-05,1.45e-04,32,true
+8,cnn_lstm_ln,data/splits_20s,16014,8.42e-04,2.63e-05,6.03e-04,32,true
+9,cnn_lstm_ln,data/splits,21237,2.33e-04,3.60e-05,7.96e-04,128,false
+10,cnn_lstm_seq16,data/splits_20s,47164,7.79e-05,4.53e-06,6.51e-05,128,false

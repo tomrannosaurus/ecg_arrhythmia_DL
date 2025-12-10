@@ -18,3 +18,4 @@ RUN,MODEL,SPLIT_DIR,SEED,LR,RNN_LR,WD,BS,FREEZE
 17,cnn_lstm_meanpool,data/splits_10s,27968,1.51e-05,9.73e-06,9.91e-04,64,false
 18,cnn_lstm_meanpool,data/splits_20s,78135,5.27e-05,2.67e-06,4.19e-04,32,false
 19,bilstm,data/splits,78680,3.54e-05,2.75e-05,8.23e-04,64,false
+20,bilstm,data/splits_20s,18208,6.01e-04,4.36e-05,8.79e-05,128,false
