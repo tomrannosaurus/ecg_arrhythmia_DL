@@ -136,6 +136,26 @@ class CNNLSTMAttention(nn.Module):
             return out, attn_weights
         return out
 
+    def freeze_cnn(self):
+        """Freeze CNN weights (only RNN trains)."""
+        for param in self.cnn.parameters():
+            param.requires_grad = False
+    
+    def unfreeze_cnn(self):
+        """Unfreeze CNN for fine-tuning."""
+        for param in self.cnn.parameters():
+            param.requires_grad = True
+    
+    def get_param_groups(self, cnn_lr, rnn_lr, fc_lr=None):
+        """Return parameter groups for differential learning rates."""
+        if fc_lr is None:
+            fc_lr = cnn_lr
+        return [
+            {'params': self.cnn.parameters(), 'lr': cnn_lr, 'name': 'cnn'},
+            {'params': self.lstm.parameters(), 'lr': rnn_lr, 'name': 'rnn'},
+            {'params': self.attention.parameters(), 'lr': fc_lr, 'name': 'attention'},
+            {'params': self.fc.parameters(), 'lr': fc_lr, 'name': 'fc'}
+        ]
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)

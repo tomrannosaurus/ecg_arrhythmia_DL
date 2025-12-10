@@ -1,9 +1,22 @@
 #!/bin/bash
-# prep 10s and 20s splits (5s already exists in data/splits)
+# prep splits
 
 set -e
 
-echo "=== preparing 10s and 20s segment splits ==="
+echo "=== preparing segment splits ==="
+
+# 5s
+if [ ! -d "data/splits" ]; then
+    echo "creating 5s data..."
+    python preprocessing.py --segment_sec 5 --save_dir data/processed
+    python create_splits.py --processed_dir data/processed --split_dir data/splits --seed 42
+else
+    echo "5s splits exist, skipping"
+fi
+
+
+python create_splits.py      # Create train/val/test splits
+
 
 # 10s
 if [ ! -d "data/splits_10s" ]; then

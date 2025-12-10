@@ -105,6 +105,28 @@ class CNNGRU(nn.Module):
         
         return out
 
+    def freeze_cnn(self):
+        """Freeze CNN weights for two-stage training."""
+        for param in self.cnn.parameters():
+            param.requires_grad = False
+        print("CNN frozen - only LSTM will train")
+    
+    def unfreeze_cnn(self):
+        """Unfreeze CNN for fine-tuning."""
+        for param in self.cnn.parameters():
+            param.requires_grad = True
+        print("CNN unfrozen")
+    
+    def get_param_groups(self, cnn_lr, rnn_lr, fc_lr=None):
+        """Return parameter groups for differential learning rates."""
+        if fc_lr is None:
+            fc_lr = cnn_lr
+        
+        return [
+            {'params': self.cnn.parameters(), 'lr': cnn_lr, 'name': 'cnn'},
+            {'params': self.gru.parameters(), 'lr': rnn_lr, 'name': 'rnn'},
+            {'params': self.fc.parameters(), 'lr': fc_lr, 'name': 'fc'}
+        ]
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)

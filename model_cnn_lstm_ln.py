@@ -133,6 +133,15 @@ class CNNLSTMLN(nn.Module):
             {'params': self.fc.parameters(), 'lr': fc_lr, 'name': 'fc'}
         ]
 
+    def freeze_cnn(self):
+        """Freeze CNN weights (only RNN trains)."""
+        for param in self.cnn.parameters():
+            param.requires_grad = False
+        
+    def unfreeze_cnn(self):
+        """Unfreeze CNN for fine-tuning."""
+        for param in self.cnn.parameters():
+            param.requires_grad = True
 
 def count_parameters(model):
     """Count trainable parameters."""

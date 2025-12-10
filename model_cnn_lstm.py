@@ -120,10 +120,20 @@ class CNNLSTM(nn.Module):
         return [
             {'params': self.cnn.parameters(), 'lr': cnn_lr, 'name': 'cnn'},
             {'params': self.lstm.parameters(), 'lr': rnn_lr, 'name': 'lstm'},
-            {'params': self.layer_norm.parameters(), 'lr': fc_lr, 'name': 'layer_norm'},
             {'params': self.fc.parameters(), 'lr': fc_lr, 'name': 'fc'}
         ]
 
+    def freeze_cnn(self):
+        """Freeze CNN weights for two-stage training."""
+        for param in self.cnn.parameters():
+            param.requires_grad = False
+        print("CNN frozen - only LSTM will train")
+    
+    def unfreeze_cnn(self):
+        """Unfreeze CNN for fine-tuning."""
+        for param in self.cnn.parameters():
+            param.requires_grad = True
+        print("CNN unfrozen")
 
 def count_parameters(model):
     """Count trainable parameters."""
