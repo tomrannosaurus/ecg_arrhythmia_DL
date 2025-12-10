@@ -62,6 +62,7 @@ echo "RUN,MODEL,SPLIT_DIR,SEED,LR,RNN_LR,WD,BS,FREEZE" > "$LOG_FILE"
 
 RUN_NUM=0
 TOTAL=$((${#MODELS[@]} * RUNS_PER_MODEL))
+count=0
 
 for model in "${MODELS[@]}"; do
     echo "--- $model ---"
@@ -82,10 +83,21 @@ for model in "${MODELS[@]}"; do
         
         echo "$RUN_NUM,$model,$SPLIT_DIR,$SEED,$LR,$RNN_LR,$WD,$BS,$FREEZE" >> "$LOG_FILE"
         
-        CMD="python train.py --model $model --seed $SEED --split_dir $SPLIT_DIR --lr $LR --rnn_lr $RNN_LR --weight_decay $WD --batch_size $BS"
+        CMD="python train.py --model $model --seed $SEED --split_dir $SPLIT_DIR \
+            --lr $LR --rnn_lr $RNN_LR --weight_decay $WD --batch_size $BS \
+            --num_epochs 100 --patience 10"
         [ "$FREEZE" = "true" ] && CMD="$CMD --freeze_cnn"
         
         $CMD || echo "  ^ run failed, continuing"
+
+        count=$((count+1))
+        if (( count % 10 == 0 )); then
+            echo "Committing after $count runs..."
+            git add checkpoints/
+            git commit -m "Auto-commit: Completed $count runs" || echo "No changes to commit"
+            git push || echo "Git push failed"
+        fi
+
         echo ""
     done
 done
