@@ -103,12 +103,12 @@ class CNNLSTM(nn.Module):
 
 
 
-    def get_param_groups(self, cnn_lr, lstm_lr, fc_lr=None):
+    def get_param_groups(self, cnn_lr, rnn_lr, fc_lr=None):
         """Return parameter groups for differential learning rates.
         
         Args:
             cnn_lr: Learning rate for CNN
-            lstm_lr: Learning rate for LSTM (typically 10-100x smaller)
+            rnn_lr: Learning rate for LSTM (typically 10-100x smaller)
             fc_lr: Learning rate for classifier (optional, defaults to cnn_lr) Not currently implemented in train.py
         
         Returns:
@@ -119,7 +119,7 @@ class CNNLSTM(nn.Module):
         
         return [
             {'params': self.cnn.parameters(), 'lr': cnn_lr, 'name': 'cnn'},
-            {'params': self.lstm.parameters(), 'lr': lstm_lr, 'name': 'lstm'},
+            {'params': self.lstm.parameters(), 'lr': rnn_lr, 'name': 'lstm'},
             {'params': self.layer_norm.parameters(), 'lr': fc_lr, 'name': 'layer_norm'},
             {'params': self.fc.parameters(), 'lr': fc_lr, 'name': 'fc'}
         ]
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     
     # Test parameter groups
     print("\nParameter groups for differential LR:")
-    param_groups = model.get_param_groups(cnn_lr=1e-4, lstm_lr=1e-5)
+    param_groups = model.get_param_groups(cnn_lr=1e-4, rnn_lr=1e-5)
     for group in param_groups:
         n_params = sum(p.numel() for p in group['params'])
         print(f"  {group['name']}: {n_params:,} params, LR={group['lr']}")
