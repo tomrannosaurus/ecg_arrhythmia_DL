@@ -1,0 +1,88 @@
+{
+  "config": {
+    "run_id": "bilstm_seed96104_20251210_145135",
+    "timestamp": "20251210_145135",
+    "datetime": "2025-12-10T14:51:35.709823",
+    "model_name": "bilstm",
+    "model_file": "model_bilstm.py",
+    "model_class": "CNNBiLSTM",
+    "split_dir": "data/splits_20s",
+    "batch_size": 32,
+    "num_epochs": 100,
+    "patience": 10,
+    "seed": 96104,
+    "optimizer": "Adam",
+    "learning_rate": 0.000535,
+    "lstm_learning_rate": 5.93e-05,
+    "differential_lr": true,
+    "weight_decay": 5.83e-05,
+    "freeze_cnn": true,
+    "scheduler": "ReduceLROnPlateau",
+    "scheduler_mode": "max",
+    "scheduler_factor": 0.5,
+    "scheduler_patience": 5,
+    "gradient_clip_norm": 1.0,
+    "save_dir": "checkpoints",
+    "model_path": "checkpoints/bilstm_seed96104_20251210_145135.pt",
+    "log_path": "checkpoints/bilstm_seed96104_20251210_145135_history.json",
+    "results_path": "checkpoints/bilstm_seed96104_20251210_145135_results.json",
+    "device": "cuda",
+    "user": "navak",
+    "platform": "Linux",
+    "torch_version": "2.8.0+cu128",
+    "model_parameters": 316612,
+    "criterion": "CrossEntropyLoss",
+    "class_weights": [
+      0.4288896322250366,
+      2.8926010131835938,
+      0.8009063601493835,
+      13.494770050048828
+    ]
+  },
+  "train_loss": [
+    1.342358196873476
+  ],
+  "train_acc": [
+    0.40268196263855516
+  ],
+  "val_loss": [
+    1.2215678719268448
+  ],
+  "val_acc": [
+    0.5115606936416185
+  ],
+  "val_f1": [
+    0.43238403701878625
+  ],
+  "val_auroc": [
+    0.5493925230511217
+  ],
+  "val_sensitivity": [
+    [
+      0.8270303781773094,
+      0.24324324324324326,
+      0.01580135440180587,
+      0.2978723404255319
+    ]
+  ],
+  "val_specificity": [
+    [
+      0.23376623376623376,
+      0.8566378633150039,
+      0.9861849096705633,
+      0.972069092245498
+    ]
+  ],
+  "learning_rate": [
+    0.000535
+  ],
+  "learning_rate_dict": [
+    null
+  ],
+  "epochs_completed": 1,
+  "best_epoch": 1,
+  "best_val_f1": 0.43238403701878625,
+  "stopped_early": false,
+  "start_time": "2025-12-10T14:51:36.562469",
+  "end_time": null
+}

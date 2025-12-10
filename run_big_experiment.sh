@@ -5,7 +5,21 @@
 set -e
 
 # --- config ---
-MODELS=("cnn_only" "cnn_lstm" "bilstm" "gru" "attention" "residual" "simple_lstm")
+MODELS=(
+    "cnn_lstm"
+    "cnn_only"
+    "cnn_lstm_ln"
+    "cnn_lstm_seq16"
+    "cnn_bilstm_seq24"
+    "cnn_lstm_meanpool"
+    "bilstm"
+    "simple_lstm"
+    "lstm_only"
+    "residual"
+    "gru"
+    "attention"
+)
+
 RUNS_PER_MODEL=3
 SPLIT_DIRS=("data/splits" "data/splits_10s" "data/splits_20s")
 BATCH_SIZES=(32 64 128 192 256)
