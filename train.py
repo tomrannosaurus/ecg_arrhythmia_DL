@@ -435,7 +435,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
     config['criterion'] = 'CrossEntropyLoss'
     config['class_weights'] = class_weights.tolist()
     
-    # check if model supports freeze_cnn for two-stage training
+    # Check if model supports freeze_cnn for two-stage training
     supports_freeze = hasattr(model, 'freeze_cnn') and hasattr(model, 'unfreeze_cnn')
     if freeze_cnn and not supports_freeze:
         print(f"WARNING: Model {model_name} doesn't support freeze_cnn(), training normally")
@@ -449,7 +449,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
         print("STAGE 1: Training full model (CNN + RNN end-to-end)")
         print("="*70)
         
-        # stage 1: Train full model
+        # Stage 1: Train full model
         if rnn_lr is not None and hasattr(model, 'get_param_groups'):
             param_groups = model.get_param_groups(cnn_lr=lr, rnn_lr=rnn_lr)
             optimizer = torch.optim.Adam(param_groups, weight_decay=weight_decay)
@@ -482,17 +482,45 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
         stage2_lr = rnn_lr if rnn_lr is not None else lr
         optimizer = torch.optim.Adam(trainable_params, lr=stage2_lr, weight_decay=weight_decay)
         
-        model, history = train_model(
+        model, history_stage2 = train_model(
             model, train_loader, val_loader, criterion, optimizer, 
             device, num_epochs=num_epochs, patience=patience, 
-            save_path=model_path, log_path=log_path, config=config,
+            save_path=model_path, log_path=None, config=None,
             stage_prefix="[Stage 2] "
         )
         
         # clean up temp stage 1 file
         if stage1_path.exists():
             stage1_path.unlink()
-                
+        
+        # Merge histories: concatenate stage 1 + stage 2 as one continuous run
+        stage1_epochs = history_stage1['epochs_completed']
+        history = {
+            'config': config,
+            # concatenate per-epoch metrics
+            'train_loss': history_stage1['train_loss'] + history_stage2['train_loss'],
+            'train_acc': history_stage1['train_acc'] + history_stage2['train_acc'],
+            'val_loss': history_stage1['val_loss'] + history_stage2['val_loss'],
+            'val_acc': history_stage1['val_acc'] + history_stage2['val_acc'],
+            'val_f1': history_stage1['val_f1'] + history_stage2['val_f1'],
+            'val_auroc': history_stage1['val_auroc'] + history_stage2['val_auroc'],
+            'val_sensitivity': history_stage1['val_sensitivity'] + history_stage2['val_sensitivity'],
+            'val_specificity': history_stage1['val_specificity'] + history_stage2['val_specificity'],
+            'learning_rate': history_stage1['learning_rate'] + history_stage2['learning_rate'],
+            'learning_rate_dict': history_stage1['learning_rate_dict'] + history_stage2['learning_rate_dict'],
+            # metadata (use overall best)
+            'epochs_completed': stage1_epochs + history_stage2['epochs_completed'],
+            'best_epoch': (history_stage2['best_epoch'] + stage1_epochs) if history_stage2['best_val_f1'] >= history_stage1['best_val_f1'] else history_stage1['best_epoch'],
+            'best_val_f1': max(history_stage1['best_val_f1'], history_stage2['best_val_f1']),
+            'stopped_early': history_stage2['stopped_early'],
+            'start_time': history_stage1['start_time'],
+            'end_time': history_stage2['end_time']
+        }
+        
+        # Save merged history
+        with open(log_path, 'w') as f:
+            json.dump(history, f, indent=2)
+        
     # =========================================================================
     # STANDARD TRAINING (when freeze_cnn=False)
     # =========================================================================
