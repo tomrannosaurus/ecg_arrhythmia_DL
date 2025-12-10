@@ -13,7 +13,7 @@
     "seed": 9134,
     "optimizer": "Adam",
     "learning_rate": 5e-05,
-    "lstm_learning_rate": 0.0001,
+    "rnn_learning_rate": 0.0001,
     "differential_lr": true,
     "weight_decay": 0.001,
     "freeze_cnn": false,
@@ -497,139 +497,139 @@
   "learning_rate_dict": [
     {
       "cnn": 5e-05,
-      "lstm": 0.0001,
+      "rnn": 0.0001,
       "layer_norm": 5e-05,
       "fc": 5e-05
     },
     {
       "cnn": 5e-05,
-      "lstm": 0.0001,
+      "rnn": 0.0001,
       "layer_norm": 5e-05,
       "fc": 5e-05
     },
     {
       "cnn": 5e-05,
-      "lstm": 0.0001,
+      "rnn": 0.0001,
       "layer_norm": 5e-05,
       "fc": 5e-05
     },
     {
       "cnn": 5e-05,
-      "lstm": 0.0001,
+      "rnn": 0.0001,
       "layer_norm": 5e-05,
       "fc": 5e-05
     },
     {
       "cnn": 5e-05,
-      "lstm": 0.0001,
+      "rnn": 0.0001,
       "layer_norm": 5e-05,
       "fc": 5e-05
     },
     {
       "cnn": 5e-05,
-      "lstm": 0.0001,
+      "rnn": 0.0001,
       "layer_norm": 5e-05,
       "fc": 5e-05
     },
     {
       "cnn": 2.5e-05,
-      "lstm": 5e-05,
+      "rnn": 5e-05,
       "layer_norm": 2.5e-05,
       "fc": 2.5e-05
     },
     {
       "cnn": 2.5e-05,
-      "lstm": 5e-05,
+      "rnn": 5e-05,
       "layer_norm": 2.5e-05,
       "fc": 2.5e-05
     },
     {
       "cnn": 2.5e-05,
-      "lstm": 5e-05,
+      "rnn": 5e-05,
       "layer_norm": 2.5e-05,
       "fc": 2.5e-05
     },
     {
       "cnn": 2.5e-05,
-      "lstm": 5e-05,
+      "rnn": 5e-05,
       "layer_norm": 2.5e-05,
       "fc": 2.5e-05
     },
     {
       "cnn": 2.5e-05,
-      "lstm": 5e-05,
+      "rnn": 5e-05,
       "layer_norm": 2.5e-05,
       "fc": 2.5e-05
     },
     {
       "cnn": 1.25e-05,
-      "lstm": 2.5e-05,
+      "rnn": 2.5e-05,
       "layer_norm": 1.25e-05,
       "fc": 1.25e-05
     },
     {
       "cnn": 1.25e-05,
-      "lstm": 2.5e-05,
+      "rnn": 2.5e-05,
       "layer_norm": 1.25e-05,
       "fc": 1.25e-05
     },
     {
       "cnn": 1.25e-05,
-      "lstm": 2.5e-05,
+      "rnn": 2.5e-05,
       "layer_norm": 1.25e-05,
       "fc": 1.25e-05
     },
     {
       "cnn": 6.25e-06,
-      "lstm": 1.25e-05,
+      "rnn": 1.25e-05,
       "layer_norm": 6.25e-06,
       "fc": 6.25e-06
     },
     {
       "cnn": 6.25e-06,
-      "lstm": 1.25e-05,
+      "rnn": 1.25e-05,
       "layer_norm": 6.25e-06,
       "fc": 6.25e-06
     },
     {
       "cnn": 6.25e-06,
-      "lstm": 1.25e-05,
+      "rnn": 1.25e-05,
       "layer_norm": 6.25e-06,
       "fc": 6.25e-06
     },
     {
       "cnn": 3.125e-06,
-      "lstm": 6.25e-06,
+      "rnn": 6.25e-06,
       "layer_norm": 3.125e-06,
       "fc": 3.125e-06
     },
     {
       "cnn": 3.125e-06,
-      "lstm": 6.25e-06,
+      "rnn": 6.25e-06,
       "layer_norm": 3.125e-06,
       "fc": 3.125e-06
     },
     {
       "cnn": 3.125e-06,
-      "lstm": 6.25e-06,
+      "rnn": 6.25e-06,
       "layer_norm": 3.125e-06,
       "fc": 3.125e-06
     },
     {
       "cnn": 1.5625e-06,
-      "lstm": 3.125e-06,
+      "rnn": 3.125e-06,
       "layer_norm": 1.5625e-06,
       "fc": 1.5625e-06
     },
     {
       "cnn": 1.5625e-06,
-      "lstm": 3.125e-06,
+      "rnn": 3.125e-06,
       "layer_norm": 1.5625e-06,
       "fc": 1.5625e-06
     },
     {
       "cnn": 1.5625e-06,
-      "lstm": 3.125e-06,
+      "rnn": 3.125e-06,
       "layer_norm": 1.5625e-06,
       "fc": 1.5625e-06
     }

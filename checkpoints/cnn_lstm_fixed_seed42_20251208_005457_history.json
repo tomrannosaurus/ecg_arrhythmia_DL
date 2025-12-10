@@ -13,7 +13,7 @@
     "seed": 42,
     "optimizer": "Adam",
     "learning_rate": 0.001,
-    "lstm_learning_rate": 0.0001,
+    "rnn_learning_rate": 0.0001,
     "differential_lr": true,
     "weight_decay": 0.0001,
     "freeze_cnn": false,
@@ -270,67 +270,67 @@
     {
       "cnn": 0.001,
       "layer_norm": 0.0001,
-      "lstm": 0.0001,
+      "rnn": 0.0001,
       "fc": 0.001
     },
     {
       "cnn": 0.001,
       "layer_norm": 0.0001,
-      "lstm": 0.0001,
+      "rnn": 0.0001,
       "fc": 0.001
     },
     {
       "cnn": 0.001,
       "layer_norm": 0.0001,
-      "lstm": 0.0001,
+      "rnn": 0.0001,
       "fc": 0.001
     },
     {
       "cnn": 0.001,
       "layer_norm": 0.0001,
-      "lstm": 0.0001,
+      "rnn": 0.0001,
       "fc": 0.001
     },
     {
       "cnn": 0.0005,
       "layer_norm": 5e-05,
-      "lstm": 5e-05,
+      "rnn": 5e-05,
       "fc": 0.0005
     },
     {
       "cnn": 0.0005,
       "layer_norm": 5e-05,
-      "lstm": 5e-05,
+      "rnn": 5e-05,
       "fc": 0.0005
     },
     {
       "cnn": 0.0005,
       "layer_norm": 5e-05,
-      "lstm": 5e-05,
+      "rnn": 5e-05,
       "fc": 0.0005
     },
     {
       "cnn": 0.00025,
       "layer_norm": 2.5e-05,
-      "lstm": 2.5e-05,
+      "rnn": 2.5e-05,
       "fc": 0.00025
     },
     {
       "cnn": 0.00025,
       "layer_norm": 2.5e-05,
-      "lstm": 2.5e-05,
+      "rnn": 2.5e-05,
       "fc": 0.00025
     },
     {
       "cnn": 0.00025,
       "layer_norm": 2.5e-05,
-      "lstm": 2.5e-05,
+      "rnn": 2.5e-05,
       "fc": 0.00025
     },
     {
       "cnn": 0.000125,
       "layer_norm": 1.25e-05,
-      "lstm": 1.25e-05,
+      "rnn": 1.25e-05,
       "fc": 0.000125
     }
   ],

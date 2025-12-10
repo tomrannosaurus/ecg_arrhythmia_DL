@@ -13,7 +13,7 @@
     "seed": 4550,
     "optimizer": "Adam",
     "learning_rate": 0.0001,
-    "lstm_learning_rate": 2e-05,
+    "rnn_learning_rate": 2e-05,
     "differential_lr": true,
     "weight_decay": 1e-05,
     "freeze_cnn": false,

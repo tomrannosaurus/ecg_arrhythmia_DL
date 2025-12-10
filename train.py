@@ -157,7 +157,7 @@ def evaluate(model, loader, criterion, device):
 
 
 def train_model(model, train_loader, val_loader, criterion, optimizer, 
-                device, num_epochs=50, patience=10, save_path="checkpoints/best_model.pt",
+                device, num_epochs=100, patience=10, save_path="checkpoints/best_model.pt",
                 log_path=None, config=None):
     """Train model with early stopping and logging.
     
@@ -302,7 +302,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
 
 
 def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
-         num_epochs=50, patience=10, lr=1e-4, rnn_lr=None, weight_decay=1e-4, batch_size=64,
+         num_epochs=100, patience=10, lr=1e-4, rnn_lr=None, weight_decay=1e-4, batch_size=64,
          freeze_cnn=False):  # NEW: Add freeze_cnn parameter
     """Train model w/ comprehensive logging of all params.
     
@@ -508,14 +508,14 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--split_dir', type=str, default='data/splits', help='Split dir')
     parser.add_argument('--save_dir', type=str, default=None, help='Checkpoint dir (default: checkpoints/)')
-    parser.add_argument('--num_epochs', type=int, default=50, help='Max epochs')
+    parser.add_argument('--num_epochs', type=int, default=100, help='Max epochs')
     parser.add_argument('--patience', type=int, default=10, help='Early stopping patience')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate (CNN/main)')
     parser.add_argument('--rnn_lr', type=float, default=None, 
                        help='RNN learning rate (if None, uses --lr for all components)')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
-    parser.add_argument('--freeze_cnn', action='store_true',  # NEW: Add freeze_cnn argument
+    parser.add_argument('--freeze_cnn', action='store_true',
                        help='Freeze CNN weights (only train RNN)')
     args = parser.parse_args()
     

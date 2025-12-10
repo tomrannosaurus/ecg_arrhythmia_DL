@@ -13,7 +13,7 @@
     "seed": 123,
     "optimizer": "Adam",
     "learning_rate": 1e-05,
-    "lstm_learning_rate": 1e-05,
+    "rnn_learning_rate": 1e-05,
     "differential_lr": true,
     "weight_decay": 1e-06,
     "freeze_cnn": false,
@@ -364,82 +364,82 @@
   "learning_rate_dict": [
     {
       "cnn": 1e-05,
-      "lstm": 1e-05,
+      "rnn": 1e-05,
       "fc": 1e-05
     },
     {
       "cnn": 1e-05,
-      "lstm": 1e-05,
+      "rnn": 1e-05,
       "fc": 1e-05
     },
     {
       "cnn": 1e-05,
-      "lstm": 1e-05,
+      "rnn": 1e-05,
       "fc": 1e-05
     },
     {
       "cnn": 1e-05,
-      "lstm": 1e-05,
+      "rnn": 1e-05,
       "fc": 1e-05
     },
     {
       "cnn": 1e-05,
-      "lstm": 1e-05,
+      "rnn": 1e-05,
       "fc": 1e-05
     },
     {
       "cnn": 5e-06,
-      "lstm": 5e-06,
+      "rnn": 5e-06,
       "fc": 5e-06
     },
     {
       "cnn": 5e-06,
-      "lstm": 5e-06,
+      "rnn": 5e-06,
       "fc": 5e-06
     },
     {
       "cnn": 5e-06,
-      "lstm": 5e-06,
+      "rnn": 5e-06,
       "fc": 5e-06
     },
     {
       "cnn": 2.5e-06,
-      "lstm": 2.5e-06,
+      "rnn": 2.5e-06,
       "fc": 2.5e-06
     },
     {
       "cnn": 2.5e-06,
-      "lstm": 2.5e-06,
+      "rnn": 2.5e-06,
       "fc": 2.5e-06
     },
     {
       "cnn": 2.5e-06,
-      "lstm": 2.5e-06,
+      "rnn": 2.5e-06,
       "fc": 2.5e-06
     },
     {
       "cnn": 1.25e-06,
-      "lstm": 1.25e-06,
+      "rnn": 1.25e-06,
       "fc": 1.25e-06
     },
     {
       "cnn": 1.25e-06,
-      "lstm": 1.25e-06,
+      "rnn": 1.25e-06,
       "fc": 1.25e-06
     },
     {
       "cnn": 1.25e-06,
-      "lstm": 1.25e-06,
+      "rnn": 1.25e-06,
       "fc": 1.25e-06
     },
     {
       "cnn": 6.25e-07,
-      "lstm": 6.25e-07,
+      "rnn": 6.25e-07,
       "fc": 6.25e-07
     },
     {
       "cnn": 6.25e-07,
-      "lstm": 6.25e-07,
+      "rnn": 6.25e-07,
       "fc": 6.25e-07
     }
   ],
