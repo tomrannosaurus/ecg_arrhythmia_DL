@@ -107,9 +107,26 @@ for model in "${MODELS[@]}"; do
         count=$((count+1))
         if (( count % 10 == 0 )); then
             echo "Committing after $count runs..."
-            git add checkpoints/
+
+            BRANCH="main"
+
+            # 1) Stage ALL changes (code + checkpoints)
+            git add -A
+
+            # 2) Commit them (if there's anything to commit)
             git commit -m "Auto-commit: Completed $count runs" || echo "No changes to commit"
-            git push || echo "Git push failed"
+
+            # 3) Fetch + rebase onto origin/main
+            git fetch origin || echo "git fetch failed (network issue?)"
+
+            if ! git pull --rebase origin "$BRANCH"; then
+                echo "git pull --rebase failed (probably merge conflict)."
+                echo "Please resolve conflicts manually, then rerun the script."
+                exit 1
+            fi
+
+            # 4) Push our updated main
+            git push origin "$BRANCH" || echo "git push failed (network/permissions?)"
         fi
 
         echo ""
