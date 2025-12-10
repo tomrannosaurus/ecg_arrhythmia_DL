@@ -302,7 +302,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
 
 
 def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
-         num_epochs=50, patience=10, lr=1e-4, lstm_lr=None, weight_decay=1e-4, batch_size=64,
+         num_epochs=50, patience=10, lr=1e-4, rnn_lr=None, weight_decay=1e-4, batch_size=64,
          freeze_cnn=False):  # NEW: Add freeze_cnn parameter
     """Train model w/ comprehensive logging of all params.
     
@@ -317,11 +317,11 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
         num_epochs: Max training epochs
         patience: Early stopping patience
         lr: Learning rate
-        lstm_lr: If specified, LSTM components use this LR instead of main LR.
-            Typically 10-100x smaller than main LR (e.g., lr=1e-4, lstm_lr=1e-5)
+        rnn_lr: If specified, RNN components use this LR instead of main LR.
+            Typically 10-100x smaller than main LR (e.g., lr=1e-4, rnn_lr=1e-5)
         weight_decay: Weight decay (L2 reg)
         batch_size: Training batch size
-        freeze_cnn: If True, freeze CNN weights (only train LSTM)
+        freeze_cnn: If True, freeze CNN weights (only train RNN)
     
     Returns:
         dict: Test metrics + history
@@ -369,8 +369,8 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
         # Optimizer config
         'optimizer': 'Adam',
         'learning_rate': lr,
-        'lstm_learning_rate': lstm_lr,
-        'differential_lr': lstm_lr is not None,
+        'lstm_learning_rate': rnn_lr,
+        'differential_lr': rnn_lr is not None,
         'weight_decay': weight_decay,
         'freeze_cnn': freeze_cnn,
                 
@@ -406,12 +406,12 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
     print(f"Device: {device}")
     print(f"Model: {model_name} ({config['model_file']})")
     print(f"Split: {split_dir}")
-    if lstm_lr is not None:
-        print(f"LR: CNN={lr}, LSTM={lstm_lr} (differential)")
+    if rnn_lr is not None:
+        print(f"LR: CNN={lr}, RNN={rnn_lr} (differential)")
     else:
         print(f"LR: {lr} (uniform)")
     if freeze_cnn:  # NEW: Print freeze status
-        print("CNN: FROZEN (only LSTM trains)")
+        print("CNN: FROZEN (only RNN trains)")
     print(f"WD: {weight_decay}, BS: {batch_size}")
     print(f"Epochs: {num_epochs}, Patience: {patience}, Seed: {seed}")
     print(f"Saving to: {save_dir}")
@@ -428,7 +428,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
     # NEW: Freeze CNN if requested
     if freeze_cnn and hasattr(model, 'freeze_cnn'):
         model.freeze_cnn()
-        print("✓ CNN frozen - only LSTM will train")
+        print("✓ CNN frozen - only RNN will train")
     elif freeze_cnn:
         print(f"WARNING: Model {model_name} doesn't support freeze_cnn()")
     
@@ -442,9 +442,9 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
     config['class_weights'] = class_weights.tolist()
     
     # MODIFIED: Create optimizer with differential LR if specified
-    if lstm_lr is not None and hasattr(model, 'get_param_groups'):
+    if rnn_lr is not None and hasattr(model, 'get_param_groups'):
         # Model supports differential learning rates
-        param_groups = model.get_param_groups(cnn_lr=lr, lstm_lr=lstm_lr)
+        param_groups = model.get_param_groups(cnn_lr=lr, rnn_lr=rnn_lr)
         optimizer = torch.optim.Adam(param_groups, weight_decay=weight_decay)
         print("\nUsing differential learning rates:")
         for group in param_groups:
@@ -453,7 +453,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
     else:
         # Standard single learning rate
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        if lstm_lr is not None:
+        if rnn_lr is not None:
             print(f"\nWARNING: Model {model_name} doesn't support differential LR, using uniform LR={lr}")
     
     # Train w/ config logging
@@ -511,12 +511,12 @@ if __name__ == "__main__":
     parser.add_argument('--num_epochs', type=int, default=50, help='Max epochs')
     parser.add_argument('--patience', type=int, default=10, help='Early stopping patience')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate (CNN/main)')
-    parser.add_argument('--lstm_lr', type=float, default=None, 
-                       help='LSTM learning rate (if None, uses --lr for all components)')
+    parser.add_argument('--rnn_lr', type=float, default=None, 
+                       help='RNN learning rate (if None, uses --lr for all components)')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--freeze_cnn', action='store_true',  # NEW: Add freeze_cnn argument
-                       help='Freeze CNN weights (only train LSTM)')
+                       help='Freeze CNN weights (only train RNN)')
     args = parser.parse_args()
     
     results = main(
@@ -527,7 +527,7 @@ if __name__ == "__main__":
         num_epochs=args.num_epochs,
         patience=args.patience,
         lr=args.lr,
-        lstm_lr=args.lstm_lr,
+        rnn_lr=args.rnn_lr,
         weight_decay=args.weight_decay,
         batch_size=args.batch_size,
         freeze_cnn=args.freeze_cnn  # NEW: Pass freeze_cnn parameter
