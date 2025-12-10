@@ -530,5 +530,5 @@ if __name__ == "__main__":
         rnn_lr=args.rnn_lr,
         weight_decay=args.weight_decay,
         batch_size=args.batch_size,
-        freeze_cnn=args.freeze_cnn  # NEW: Pass freeze_cnn parameter
+        freeze_cnn=args.freeze_cnn  
     )
