@@ -68,7 +68,7 @@ def calculate_metrics(y_true, y_pred, y_prob):
     # AUROC (one-vs-rest)
     try:
         auroc = roc_auc_score(y_true, y_prob, multi_class='ovr', average='weighted')
-    except:
+    except Exception: # catch all but system exceptions
         auroc = 0.0
     
     # Per-class sensitivity and specificity
