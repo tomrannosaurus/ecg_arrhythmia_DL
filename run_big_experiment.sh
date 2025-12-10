@@ -126,7 +126,24 @@ for model in "${MODELS[@]}"; do
             fi
 
             # 4) Push our updated main
-            git push origin "$BRANCH" || echo "git push failed (network/permissions?)"
+            if ! git push origin "$BRANCH"; then
+                echo "First git push failed; trying WIP-before-rebase flow..."
+
+                # Make sure everything is staged again (in case anything changed)
+                git add -A
+                git commit -m "WIP before rebase (auto)" || echo "No WIP changes to commit"
+
+                if ! git pull --rebase origin "$BRANCH"; then
+                    echo "git pull --rebase failed again (conflicts?)."
+                    echo "Please resolve conflicts manually, then rerun the script."
+                    exit 1
+                fi
+
+                if ! git push origin "$BRANCH"; then
+                    echo "Second git push failed; please fix manually (network/permissions?)."
+                    exit 1
+                fi
+            fi
         fi
 
         echo ""
