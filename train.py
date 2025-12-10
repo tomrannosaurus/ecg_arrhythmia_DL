@@ -158,7 +158,7 @@ def evaluate(model, loader, criterion, device):
 
 def train_model(model, train_loader, val_loader, criterion, optimizer, 
                 device, num_epochs=100, patience=10, save_path="checkpoints/best_model.pt",
-                log_path=None, config=None):
+                log_path=None, config=None, stage_prefix=""):
     """Train model with early stopping and logging.
     
     Args:
@@ -173,6 +173,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
         save_path: Path for best model weights
         log_path: Path for training log (auto if None)
         config: Dict of all hyperparams/settings (auto-saved)
+        stage_prefix: Prefix for print statements (e.g., "[Stage 1] ")
     
     Returns:
         model: Trained model
@@ -222,7 +223,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
     best_val_f1 = 0
     epochs_no_improve = 0
     
-    print(f"\nTraining with logging to: {log_path}")
+    print(f"\n{stage_prefix}Training with logging to: {log_path}")
     
     for epoch in range(num_epochs):
         # Training
@@ -257,7 +258,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
             history['learning_rate_dict'].append(None)
         
         # Print progress
-        print(f"Epoch {epoch+1}/{num_epochs} - "
+        print(f"{stage_prefix}Epoch {epoch+1}/{num_epochs} - "
               f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} - "
               f"Val Loss: {val_loss:.4f}, Val F1: {val_metrics['f1']:.4f}, "
               f"Val AUROC: {val_metrics['auroc']:.4f}")
@@ -272,7 +273,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
             history['best_epoch'] = epoch + 1
             epochs_no_improve = 0
             torch.save(model.state_dict(), save_path)
-            print(f"  Best model saved (F1: {best_val_f1:.4f})")
+            print(f"  {stage_prefix}Best model saved (F1: {best_val_f1:.4f})")
         else:
             epochs_no_improve += 1
         
@@ -283,7 +284,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
             json.dump(history, f, indent=2)
         
         if epochs_no_improve >= patience:
-            print(f"Early stopping after {epoch+1} epochs: no improvement for {patience} epochs")
+            print(f"{stage_prefix}Early stopping after {epoch+1} epochs: no improvement for {patience} epochs")
             history['stopped_early'] = True
             break
     
@@ -293,7 +294,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
     # Save training history
     with open(log_path, 'w') as f:
         json.dump(history, f, indent=2)
-    print(f"\n Training history saved to: {log_path}")
+    print(f"\n{stage_prefix}Training history saved to: {log_path}")
     
     # Load best model
     model.load_state_dict(torch.load(save_path))
@@ -303,7 +304,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
 
 def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
          num_epochs=100, patience=10, lr=1e-4, rnn_lr=None, weight_decay=1e-4, batch_size=64,
-         freeze_cnn=False):  # NEW: Add freeze_cnn parameter
+         freeze_cnn=False):
     """Train model w/ comprehensive logging of all params.
     
     Automatically generates unique timestamp-based filenames and logs ALL
@@ -321,7 +322,8 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
             Typically 10-100x smaller than main LR (e.g., lr=1e-4, rnn_lr=1e-5)
         weight_decay: Weight decay (L2 reg)
         batch_size: Training batch size
-        freeze_cnn: If True, freeze CNN weights (only train RNN)
+        freeze_cnn: If True, uses two-stage training: first train full model,
+            then freeze CNN and fine-tune RNN only.
     
     Returns:
         dict: Test metrics + history
@@ -369,7 +371,7 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
         # Optimizer config
         'optimizer': 'Adam',
         'learning_rate': lr,
-        'lstm_learning_rate': rnn_lr,
+        'rnn_learning_rate': rnn_lr,
         'differential_lr': rnn_lr is not None,
         'weight_decay': weight_decay,
         'freeze_cnn': freeze_cnn,
@@ -410,8 +412,8 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
         print(f"LR: CNN={lr}, RNN={rnn_lr} (differential)")
     else:
         print(f"LR: {lr} (uniform)")
-    if freeze_cnn:  # NEW: Print freeze status
-        print("CNN: FROZEN (only RNN trains)")
+    if freeze_cnn:
+        print("Mode: TWO-STAGE (train full model, then freeze CNN and fine-tune RNN)")
     print(f"WD: {weight_decay}, BS: {batch_size}")
     print(f"Epochs: {num_epochs}, Patience: {patience}, Seed: {seed}")
     print(f"Saving to: {save_dir}")
@@ -424,45 +426,96 @@ def main(model_name='cnn_lstm', seed=42, split_dir='data/splits', save_dir=None,
     
     # Model
     model = get_model(model_name).to(device)
-    
-    # NEW: Freeze CNN if requested
-    if freeze_cnn and hasattr(model, 'freeze_cnn'):
-        model.freeze_cnn()
-        print("CNN frozen - only RNN will train")
-    elif freeze_cnn:
-        print(f"WARNING: Model {model_name} doesn't support freeze_cnn()")
-    
     n_params = sum(p.numel() for p in model.parameters())
     config['model_parameters'] = n_params
     print(f"Parameters: {n_params:,}")
     
-    # Loss + optimizer
+    # Loss
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     config['criterion'] = 'CrossEntropyLoss'
     config['class_weights'] = class_weights.tolist()
     
-    # MODIFIED: Create optimizer with differential LR if specified
-    if rnn_lr is not None and hasattr(model, 'get_param_groups'):
-        # Model supports differential learning rates
-        param_groups = model.get_param_groups(cnn_lr=lr, rnn_lr=rnn_lr)
-        optimizer = torch.optim.Adam(param_groups, weight_decay=weight_decay)
-        print("\nUsing differential learning rates:")
-        for group in param_groups:
-            n = sum(p.numel() for p in group['params'])
-            print(f"  {group['name']}: LR={group['lr']}, {n:,} params")
-    else:
-        # Standard single learning rate
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        if rnn_lr is not None:
-            print(f"\nWARNING: Model {model_name} doesn't support differential LR, using uniform LR={lr}")
+    # check if model supports freeze_cnn for two-stage training
+    supports_freeze = hasattr(model, 'freeze_cnn') and hasattr(model, 'unfreeze_cnn')
+    if freeze_cnn and not supports_freeze:
+        print(f"WARNING: Model {model_name} doesn't support freeze_cnn(), training normally")
+        freeze_cnn = False
     
-    # Train w/ config logging
-    print("\nTraining...")
-    model, history = train_model(
-        model, train_loader, val_loader, criterion, optimizer, 
-        device, num_epochs=num_epochs, patience=patience, 
-        save_path=model_path, log_path=log_path, config=config
-    )
+    # =========================================================================
+    # TWO-STAGE TRAINING (when freeze_cnn=True)
+    # =========================================================================
+    if freeze_cnn:
+        print("\n" + "="*70)
+        print("STAGE 1: Training full model (CNN + RNN end-to-end)")
+        print("="*70)
+        
+        # stage 1: Train full model
+        if rnn_lr is not None and hasattr(model, 'get_param_groups'):
+            param_groups = model.get_param_groups(cnn_lr=lr, rnn_lr=rnn_lr)
+            optimizer = torch.optim.Adam(param_groups, weight_decay=weight_decay)
+        else:
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+        
+        # Use a temp path for stage 1 weights (will be cleaned up)
+        stage1_path = save_dir / f".{run_id}_stage1_temp.pt"
+        
+        model, history_stage1 = train_model(
+            model, train_loader, val_loader, criterion, optimizer, 
+            device, num_epochs=num_epochs, patience=patience, 
+            save_path=stage1_path, log_path=None, config=None,
+            stage_prefix="[Stage 1] "
+        )
+        
+        print("\n" + "="*70)
+        print("STAGE 2: Freezing CNN, fine-tuning RNN only")
+        print("="*70)
+        
+        # stage 2: Freeze CNN, train RNN only
+        model.freeze_cnn()
+        
+        # make new optimizer for unfrozen trainable params only (RNN)
+        trainable_params = [p for p in model.parameters() if p.requires_grad]
+        n_trainable = sum(p.numel() for p in trainable_params)
+        print(f"Trainable parameters: {n_trainable:,} (CNN frozen)")
+        
+        # use RNN LR if specified, otherwise use main LR
+        stage2_lr = rnn_lr if rnn_lr is not None else lr
+        optimizer = torch.optim.Adam(trainable_params, lr=stage2_lr, weight_decay=weight_decay)
+        
+        model, history = train_model(
+            model, train_loader, val_loader, criterion, optimizer, 
+            device, num_epochs=num_epochs, patience=patience, 
+            save_path=model_path, log_path=log_path, config=config,
+            stage_prefix="[Stage 2] "
+        )
+        
+        # clean up temp stage 1 file
+        if stage1_path.exists():
+            stage1_path.unlink()
+                
+    # =========================================================================
+    # STANDARD TRAINING (when freeze_cnn=False)
+    # =========================================================================
+    else:
+        # Create optimizer with differential LR if specified
+        if rnn_lr is not None and hasattr(model, 'get_param_groups'):
+            param_groups = model.get_param_groups(cnn_lr=lr, rnn_lr=rnn_lr)
+            optimizer = torch.optim.Adam(param_groups, weight_decay=weight_decay)
+            print("\nUsing differential learning rates:")
+            for group in param_groups:
+                n = sum(p.numel() for p in group['params'])
+                print(f"  {group['name']}: LR={group['lr']}, {n:,} params")
+        else:
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+            if rnn_lr is not None:
+                print(f"\nWARNING: Model {model_name} doesn't support differential LR, using uniform LR={lr}")
+        
+        print("\nTraining...")
+        model, history = train_model(
+            model, train_loader, val_loader, criterion, optimizer, 
+            device, num_epochs=num_epochs, patience=patience, 
+            save_path=model_path, log_path=log_path, config=config
+        )
     
     # Test eval
     print("\nTest set evaluation:")
@@ -516,7 +569,7 @@ if __name__ == "__main__":
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--freeze_cnn', action='store_true',
-                       help='Freeze CNN weights (only train RNN)')
+                       help='Use two-stage training: train full model, then freeze CNN and fine-tune RNN')
     args = parser.parse_args()
     
     results = main(
