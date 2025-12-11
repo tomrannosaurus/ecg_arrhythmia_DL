@@ -3,22 +3,21 @@
 find optimal candidate runs using existing results_table infrastructure.
 
 Usage:
-    python optimal_runs.py
-    python optimal_runs.py --output optimal_models.txt
+    python print_optimal_runs.py
+    python print_optimal_runs.py --output optimal_models.txt
 """
 
 import argparse
 import numpy as np
-from datetime import datetime
 from results_table import generate_table
-from analysis.core import DEFAULT_CUTOFF_DATE
 
 # target configs: (method, model, batch_size, lr, rnn_lr, weight_decay, seed)
 TARGET_CONFIGS = [
-    ('Greedy', 'attention', 64, 5.00e-04, 5.00e-04, 1.00e-04, 42),
-    ('Linear', 'bilstm',    24, 5.00e-03, 1.00e-03, 1.00e-06, 42),
-    ('RF',     'cnn_lstm',  48, 1.10e-03, None,     7.70e-05, 42),
-    ('NN',     'bilstm',    24, 1.18e-03, 1.40e-04, 1.24e-06, 42),
+    ('Greedy',    'attention', 64, 5.00e-04, 5.00e-04, 1.00e-04, 42),
+    ('Linear',    'bilstm',    24, 5.00e-03, 1.00e-03, 1.00e-06, 42),
+    ('RF',        'cnn_lstm',  48, 1.10e-03, None,     7.70e-05, 42),
+    ('NN',        'bilstm',    24, 1.18e-03, 1.40e-04, 1.24e-06, 42),
+    ('Empirical', 'cnn_lstm',  64, 1.00e-04, None, 1.00e-04, 1),
 ]
 
 
@@ -73,6 +72,16 @@ def main(checkpoint_dir="checkpoints", output=None):
         print("No runs found.")
         return
     
+    # filter out mps backend runs (lstm bug)
+    if 'Device' in df.columns:
+        rnn_models = df['Model'].str.contains('lstm|gru|bilstm', case=False, na=False)
+        mps_device = df['Device'] == 'mps'
+        affected = rnn_models & mps_device
+        n_affected = affected.sum()
+        if n_affected > 0:
+            print(f"filtering {n_affected} mps backend runs (lstm bug)")
+            df = df[~affected].copy()
+    
     results = []
     
     # find each optimizer's config (may have multiple matches)
@@ -106,34 +115,6 @@ def main(checkpoint_dir="checkpoints", output=None):
                 results.append(avg_row)
         else:
             print(f"  NOT FOUND - needs training")
-    
-    # find empirical best (from experiments before cutoff date)
-    print(f"\nSearching for Empirical Best (before {DEFAULT_CUTOFF_DATE})...")
-    
-    # filter to runs before cutoff
-    def parse_date(date_str):
-        try:
-            return datetime.fromisoformat(date_str)
-        except:
-            return None
-    
-    df['_parsed_date'] = df['Date'].apply(parse_date)
-    experiment_runs = df[df['_parsed_date'].apply(lambda d: d is not None and d < DEFAULT_CUTOFF_DATE)]
-    
-    if experiment_runs.empty:
-        print("  No runs found before cutoff date")
-    else:
-        best_idx = experiment_runs['Test_F1'].idxmax()
-        best_row = experiment_runs.loc[best_idx].to_dict()
-        best_row['Method'] = 'Empirical'
-        
-        # check if empirical best already in results 
-        is_dup = any(r.get('Run_ID') == best_row['Run_ID'] for r in results)
-        if is_dup:
-            print(f"  Same as existing result: {best_row['Run_ID']}")
-        else:
-            results.append(best_row)
-            print(f"  Found: {best_row['Run_ID']} (F1={best_row['Test_F1']:.4f})")
     
     if not results:
         print("\nNo matching runs found.")
