@@ -15,9 +15,10 @@ usage:
 
 import argparse
 import sys
+import pandas as pd
 
 # import from project modules
-from core import load_all_runs, filter_mps_runs, add_derived_features, remove_near_duplicates
+from core import load_all_runs, filter_mps_runs, filter_by_date, add_derived_features, remove_near_duplicates
 from stats import (
     analyze_main_effects, analyze_interactions, analyze_model_features,
     compute_variance_components, find_top_configs, find_robust_configs
@@ -36,6 +37,9 @@ def load_data(args) -> 'pd.DataFrame':
     df = load_all_runs(args.checkpoint_dir)
     if df is None:
         sys.exit(1)
+    
+    # filter by date (default: exclude runs after Dec 11, 2025 2pm ET)
+    df = filter_by_date(df, verbose=True)
     
     if args.exclude_mps:
         df = filter_mps_runs(df)

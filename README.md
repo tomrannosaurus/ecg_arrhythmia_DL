@@ -303,24 +303,23 @@ python grad_cam_ecg.py --checkpoint checkpoints/cnn_lstm_seed42_*.pt --num-sampl
   - Validates architecture effectiveness across hardware backends
 
 ### Phase 4: Final Deliverables (Current) 🔄
-- [ ] **[T11]** Implement interpretability analysis
-  - [ ] Grad-CAM visualization for CNN feature importance
-  - [ ] Attention weight visualization for temporal focus
-  - [ ] Case study analysis of model predictions
-- [ ] **[T12]** Final model training and cross-validation
-  - [ ] Train on full dataset with best hyperparameters
-  - [ ] K-fold cross-validation for robust performance estimates
-  - [ ] Finalize results tables and statistical analysis
-- [ ] **[T13]** Prepare and deliver presentation (Dec 1 & 4, 2025)
-  - [ ] Build presentation slides with key results
-  - [ ] Rehearse timing and delivery
-  - [ ] Prepare for Q&A
+- [x] **[T11]** Implement interpretability analysis
+  - [x] Grad-CAM visualization for CNN feature importance
+  - [ ] Attention weight visualization for temporal focus [TODO: MOVE THIS TO FUTURE WORK]
+  - [ ] Case study analysis of model predictions [TODO: MOVE THIS TO FUTURE WORK]
+- [x] **[T12]** Final model training and cross-validation
+  - [x] Train on full dataset with best hyperparameters
+  - [ ] K-fold cross-validation for robust performance estimates [TODO: MOVE THIS TO FUTURE WORK]
+  - [x] Finalize results tables and statistical analysis
+- [x] **[T13]** Prepare and deliver presentation (Dec 1, 2025)
+  - [x] Build presentation slides with key results
+  - [x] Rehearse timing and delivery
 - [ ] **[T14]** Write final paper
   - [ ] Methods section (architecture, preprocessing, training)
   - [ ] Results section (tables, figures, statistical tests)
   - [ ] Discussion and interpretation
   - [ ] Limitations and future work
-  - [ ] References and citations
+  - [x] References and citations
 - [ ] **[T15]** Submit final paper (Dec 11, 2025) and archive GitHub release
   - [ ] Final proofreading and formatting
   - [ ] Tag GitHub release with code, configs, and trained models
