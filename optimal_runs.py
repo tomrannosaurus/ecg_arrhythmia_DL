@@ -11,12 +11,7 @@ import argparse
 import numpy as np
 from datetime import datetime
 from results_table import generate_table
-
-# try to import cutoff from analysis pipeline, fallback to local definition
-try:
-    from analysis.core import DEFAULT_CUTOFF_DATE
-except ImportError:
-    DEFAULT_CUTOFF_DATE = datetime(2025, 12, 11, 14, 0, 0)
+from analysis.core import DEFAULT_CUTOFF_DATE
 
 # target configs: (method, model, batch_size, lr, rnn_lr, weight_decay, seed)
 TARGET_CONFIGS = [
@@ -132,13 +127,10 @@ def main(checkpoint_dir="checkpoints", output=None):
         best_row = experiment_runs.loc[best_idx].to_dict()
         best_row['Method'] = 'Empirical'
         
-        # check if empirical best already in results
+        # check if empirical best already in results 
         is_dup = any(r.get('Run_ID') == best_row['Run_ID'] for r in results)
         if is_dup:
-            for r in results:
-                if r.get('Run_ID') == best_row['Run_ID']:
-                    r['Method'] = r['Method'] + '*'
-            print(f"  Same as {best_row['Run_ID']}")
+            print(f"  Same as existing result: {best_row['Run_ID']}")
         else:
             results.append(best_row)
             print(f"  Found: {best_row['Run_ID']} (F1={best_row['Test_F1']:.4f})")
