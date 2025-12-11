@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
 generate results table
-================================
-
+======================
 
 usage:
     python results_table.py
     python results_table.py --checkpoint_dir checkpoints
     python results_table.py --output results_table.csv
-    python results_table.py --format markdown
 """
 
 import json
@@ -105,7 +103,7 @@ def extract_model_info(results):
         # data split info (normalized)
         'Split_Dir': split_dir,
         
-        # hyperparameters (renamed LSTM_LR -> RNN_LR)
+        # hyperparameters
         'LR': cnn_lr,          # cnn lr (none for lstm_only)
         'RNN_LR': rnn_lr,      # rnn/lstm/gru lr
         'LR_Display': lr_display,
@@ -191,14 +189,13 @@ def format_dataframe(df):
     for col in int_cols:
         if col in df_display.columns:
             if col == 'Params':
-                # add commas to parameter counts
                 df_display[col] = df_display[col].apply(lambda x: f'{x:,}')
     
     return df_display
 
 
-def print_table(df, format='text'):
-    """print the table in specified format."""
+def print_table(df):
+    """print the table to console."""
     if df is None:
         return
     
@@ -216,40 +213,26 @@ def print_table(df, format='text'):
     print(f"total models: {len(df)}")
     print("="*120)
     
-    if format == 'markdown':
-        print(df_formatted.to_markdown(index=False))
-    elif format == 'latex':
-        print(df_formatted.to_latex(index=False))
-    else:
-        pd.set_option('display.max_columns', None)
-        pd.set_option('display.width', 150)
-        pd.set_option('display.max_colwidth', 50)
-        print(df_formatted.to_string(index=False))
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', 150)
+    pd.set_option('display.max_colwidth', 50)
+    print(df_formatted.to_string(index=False))
     
     print("="*120)
     print()
 
 
-def save_table(df, output_path, format='csv'):
-    """save table to file."""
+def save_table(df, output_path):
+    """save table to csv file."""
     output_path = Path(output_path)
-    
-    if format == 'excel' or output_path.suffix in ['.xlsx', '.xls']:
-        df.to_excel(output_path, index=False)
-    elif format == 'latex' or output_path.suffix == '.tex':
-        df.to_latex(output_path, index=False)
-    else:
-        df.to_csv(output_path, index=False)
-    
+    df.to_csv(output_path, index=False)
     print(f"table saved to {output_path}")
 
 
 def main():
     parser = argparse.ArgumentParser(description='generate results table')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints')
-    parser.add_argument('--output', type=str, help='output file path')
-    parser.add_argument('--format', type=str, choices=['text', 'markdown', 'latex', 'csv', 'excel'],
-                       default='text')
+    parser.add_argument('--output', type=str, help='output csv file path')
     parser.add_argument('--sort-by', type=str, default='Test_F1')
     parser.add_argument('--ascending', action='store_true')
     
@@ -264,10 +247,10 @@ def main():
     if df is None:
         return
     
-    print_table(df, format=args.format)
+    print_table(df)
     
     if args.output:
-        save_table(df, args.output, format=args.format)
+        save_table(df, args.output)
 
 
 if __name__ == "__main__":
