@@ -15,15 +15,14 @@ usage:
 
 import argparse
 import sys
-import pandas as pd
 
 # import from project modules
-from core import load_all_runs, filter_mps_runs, add_derived_features
+from core import load_all_runs, filter_mps_runs, add_derived_features, remove_near_duplicates
 from stats import (
     analyze_main_effects, analyze_interactions, analyze_model_features,
     compute_variance_components, find_top_configs, find_robust_configs
 )
-from optimizer import optimize, compare_methods
+from optimizer import optimize
 from outputs import (
     print_data_summary, print_main_effects, print_model_leaderboard,
     print_top_configs, print_optimization_result,
@@ -42,6 +41,10 @@ def load_data(args) -> 'pd.DataFrame':
         df = filter_mps_runs(df)
     
     df = add_derived_features(df)
+    
+    # remove near-duplicate rows to prevent multicollinearity
+    df = remove_near_duplicates(df, verbose=True)
+    
     print(f"loaded {len(df)} runs")
     
     return df

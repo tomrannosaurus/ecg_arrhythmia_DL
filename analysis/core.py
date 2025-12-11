@@ -416,6 +416,103 @@ def get_feature_names(encoder: Dict) -> List[str]:
 
 
 # =============================================================================
+# near-duplicate removal (prevents multicollinearity)
+# =============================================================================
+
+def remove_near_duplicates(df: pd.DataFrame, 
+                           feature_cols: List[str] = None,
+                           tolerance: float = 0.015,
+                           verbose: bool = True) -> pd.DataFrame:
+    """
+    remove rows that are nearly identical to prevent multicollinearity.
+    
+    for each pair of rows, if all feature values are within `tolerance` 
+    (relative for continuous, exact for categorical), keep only one.
+    
+    args:
+        df: input dataframe
+        feature_cols: columns to check for similarity (default: common HP columns)
+        tolerance: relative tolerance for continuous variables (0.015 = 1.5%)
+    
+    returns:
+        filtered dataframe with near-duplicates removed
+    """
+    if feature_cols is None:
+        # columns to check
+        feature_cols = ['model', 'segment_length', 'batch_size', 'diff_lr', 'cnn_frozen',
+                        'log_lr', 'log_rnn_lr', 'log_wd','test_ft','test_acc','test_auroc']
+    
+    feature_cols = [c for c in feature_cols if c in df.columns]
+    if not feature_cols:
+        return df
+    
+    n_original = len(df)
+    if n_original <= 1:
+        return df
+    
+    # identify continuous vs categorical columns
+    continuous_cols = [c for c in feature_cols if c.startswith('log_') or 
+                       df[c].dtype in ['float64', 'float32']]
+    categorical_cols = [c for c in feature_cols if c not in continuous_cols]
+    
+    # mark rows to keep
+    keep_mask = np.ones(len(df), dtype=bool)
+    indices = df.index.tolist()
+    
+    for i in range(len(df)):
+        if not keep_mask[i]:
+            continue
+        
+        for j in range(i + 1, len(df)):
+            if not keep_mask[j]:
+                continue
+            
+            # check if rows i and j are near-duplicates
+            is_duplicate = True
+            
+            # check categorical columns (must be exact match)
+            for col in categorical_cols:
+                val_i = df.loc[indices[i], col]
+                val_j = df.loc[indices[j], col]
+                if pd.isna(val_i) and pd.isna(val_j):
+                    continue
+                if pd.isna(val_i) or pd.isna(val_j) or val_i != val_j:
+                    is_duplicate = False
+                    break
+            
+            if not is_duplicate:
+                continue
+            
+            # check continuous columns (within tolerance)
+            for col in continuous_cols:
+                val_i = df.loc[indices[i], col]
+                val_j = df.loc[indices[j], col]
+                
+                if pd.isna(val_i) and pd.isna(val_j):
+                    continue
+                if pd.isna(val_i) or pd.isna(val_j):
+                    is_duplicate = False
+                    break
+                
+                # relative tolerance check
+                max_val = max(abs(val_i), abs(val_j), 1e-10)
+                if abs(val_i - val_j) / max_val > tolerance:
+                    is_duplicate = False
+                    break
+            
+            if is_duplicate:
+                keep_mask[j] = False
+    
+    df_filtered = df[keep_mask].copy()
+    n_removed = n_original - len(df_filtered)
+    
+    if verbose and n_removed > 0:
+        print(f"  removed {n_removed} near-duplicate rows ({n_original} → {len(df_filtered)})")
+    
+    return df_filtered
+
+
+# =============================================================================
 # summary utilities
 # =============================================================================
 
