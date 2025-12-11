@@ -1,0 +1,128 @@
+{
+  "config": {
+    "run_id": "gru_seed123_20251211_040429",
+    "timestamp": "20251211_040429",
+    "datetime": "2025-12-11T04:04:29.752878",
+    "model_name": "gru",
+    "model_file": "model_gru.py",
+    "model_class": "CNNGRU",
+    "split_dir": "data/splits",
+    "batch_size": 24,
+    "num_epochs": 100,
+    "patience": 10,
+    "seed": 123,
+    "optimizer": "Adam",
+    "learning_rate": 0.0001,
+    "rnn_learning_rate": null,
+    "differential_lr": false,
+    "weight_decay": 0.0001,
+    "freeze_cnn": false,
+    "scheduler": "ReduceLROnPlateau",
+    "scheduler_mode": "max",
+    "scheduler_factor": 0.5,
+    "scheduler_patience": 5,
+    "gradient_clip_norm": 1.0,
+    "save_dir": "checkpoints",
+    "model_path": "checkpoints\\gru_seed123_20251211_040429.pt",
+    "log_path": "checkpoints\\gru_seed123_20251211_040429_history.json",
+    "results_path": "checkpoints\\gru_seed123_20251211_040429_results.json",
+    "device": "cuda",
+    "user": "tomra",
+    "platform": "Windows",
+    "torch_version": "2.9.1+cu128",
+    "model_parameters": 105652,
+    "criterion": "CrossEntropyLoss",
+    "class_weights": [
+      0.4279378354549408,
+      2.9077935218811035,
+      0.8170527219772339,
+      10.48245906829834
+    ]
+  },
+  "train_loss": [
+    1.282407701377444,
+    1.1677200971384925,
+    1.110298774533185
+  ],
+  "train_acc": [
+    0.38520383052325174,
+    0.4579612729036885,
+    0.5085005554539958
+  ],
+  "val_loss": [
+    1.1280562675458454,
+    1.1912529972856336,
+    1.0902321633396659
+  ],
+  "val_acc": [
+    0.41717992399423404,
+    0.4061066701611846,
+    0.49089241252784693
+  ],
+  "val_f1": [
+    0.4349549961917086,
+    0.422190856284578,
+    0.5080106131052446
+  ],
+  "val_auroc": [
+    0.5687421236371577,
+    0.5927133215699877,
+    0.6462607025410149
+  ],
+  "val_sensitivity": [
+    [
+      0.403546419697312,
+      0.3323397913561848,
+      0.4646315789473684,
+      0.4462025316455696
+    ],
+    [
+      0.5201039078382652,
+      0.5536512667660208,
+      0.12357894736842105,
+      0.8322784810126582
+    ],
+    [
+      0.5634741359837362,
+      0.48956780923994037,
+      0.3471578947368421,
+      0.6234177215189873
+    ]
+  ],
+  "val_specificity": [
+    [
+      0.6892946317103621,
+      0.8737068965517242,
+      0.5736301369863014,
+      0.9555733975645657
+    ],
+    [
+      0.6352996254681648,
+      0.7067528735632184,
+      0.9075342465753424,
+      0.8880636959721665
+    ],
+    [
+      0.6665106117353309,
+      0.8528735632183908,
+      0.7246004566210046,
+      0.9538338016860699
+    ]
+  ],
+  "learning_rate": [
+    0.0001,
+    0.0001,
+    0.0001
+  ],
+  "learning_rate_dict": [
+    null,
+    null,
+    null
+  ],
+  "epochs_completed": 3,
+  "best_epoch": 3,
+  "best_val_f1": 0.5080106131052446,
+  "stopped_early": false,
+  "start_time": "2025-12-11T04:04:31.810720",
+  "end_time": null
+}

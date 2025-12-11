@@ -23,3 +23,4 @@
 22,simple_lstm,data/splits,46928,1.49e-005,3.85e-006,2.17e-006,32,True
 23,simple_lstm,data/splits_10s,96374,1.11e-005,2.83e-006,1.52e-004,64,False
 24,simple_lstm,data/splits,95396,1.04e-004,2.41e-006,1.12e-005,256,False
+25,lstm_only,data/splits_10s,11395,1.18e-004,n/a,4.89e-004,32,False
