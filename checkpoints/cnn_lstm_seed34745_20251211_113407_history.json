@@ -1,0 +1,116 @@
+{
+  "config": {
+    "run_id": "cnn_lstm_seed34745_20251211_113407",
+    "timestamp": "20251211_113407",
+    "datetime": "2025-12-11T11:34:07.175477",
+    "model_name": "cnn_lstm",
+    "model_file": "model_cnn_lstm.py",
+    "model_class": "CNNLSTM",
+    "split_dir": "data/splits",
+    "batch_size": 32,
+    "num_epochs": 100,
+    "patience": 10,
+    "seed": 34745,
+    "optimizer": "Adam",
+    "learning_rate": 1.27e-05,
+    "rnn_learning_rate": 7.46e-06,
+    "differential_lr": true,
+    "weight_decay": 0.000187,
+    "freeze_cnn": false,
+    "scheduler": "ReduceLROnPlateau",
+    "scheduler_mode": "max",
+    "scheduler_factor": 0.5,
+    "scheduler_patience": 5,
+    "gradient_clip_norm": 1.0,
+    "save_dir": "checkpoints",
+    "model_path": "checkpoints/cnn_lstm_seed34745_20251211_113407.pt",
+    "log_path": "checkpoints/cnn_lstm_seed34745_20251211_113407_history.json",
+    "results_path": "checkpoints/cnn_lstm_seed34745_20251211_113407_results.json",
+    "device": "cuda",
+    "user": "navak",
+    "platform": "Linux",
+    "torch_version": "2.8.0+cu128",
+    "model_parameters": 308420,
+    "criterion": "CrossEntropyLoss",
+    "class_weights": [
+      0.4279378354549408,
+      2.9077935218811035,
+      0.8170527219772339,
+      10.48245906829834
+    ]
+  },
+  "train_loss": [
+    1.3861874619744352,
+    1.3816162859380003
+  ],
+  "train_acc": [
+    0.22796113228242376,
+    0.3886349893830945
+  ],
+  "val_loss": [
+    1.3735397531801299,
+    1.354808714404796
+  ],
+  "val_acc": [
+    0.31175468483816016,
+    0.325252260516315
+  ],
+  "val_f1": [
+    0.1511305142416325,
+    0.2054810890422888
+  ],
+  "val_auroc": [
+    0.49167521652433543,
+    0.5029357223146641
+  ],
+  "val_sensitivity": [
+    [
+      0.003049469166478428,
+      0.0,
+      0.996,
+      0.0
+    ],
+    [
+      0.057262254348317145,
+      0.0,
+      0.9383157894736842,
+      0.0
+    ]
+  ],
+  "val_specificity": [
+    [
+      0.9964107365792759,
+      0.9991379310344828,
+      0.004090563165905631,
+      1.0
+    ],
+    [
+      0.9374219725343321,
+      1.0,
+      0.05850456621004566,
+      1.0
+    ]
+  ],
+  "learning_rate": [
+    1.27e-05,
+    1.27e-05
+  ],
+  "learning_rate_dict": [
+    {
+      "cnn": 1.27e-05,
+      "lstm": 7.46e-06,
+      "fc": 1.27e-05
+    },
+    {
+      "cnn": 1.27e-05,
+      "lstm": 7.46e-06,
+      "fc": 1.27e-05
+    }
+  ],
+  "epochs_completed": 2,
+  "best_epoch": 2,
+  "best_val_f1": 0.2054810890422888,
+  "stopped_early": false,
+  "start_time": "2025-12-11T11:34:07.863028",
+  "end_time": null
+}
