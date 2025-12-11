@@ -1,0 +1,4 @@
+﻿RUN,MODEL,SPLIT_DIR,SEED,LR,RNN_LR,WD,BS,FREEZE
+1,cnn_lstm,data/splits_20s,6318,1.14e-005,3.85e-005,2.88e-005,256,False
+2,cnn_lstm,data/splits_20s,80950,1.09e-004,4.14e-005,3.00e-006,32,False
+3,cnn_lstm,data/splits,62807,2.30e-005,1.17e-006,1.29e-006,128,False
