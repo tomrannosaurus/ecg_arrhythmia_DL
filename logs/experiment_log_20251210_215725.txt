@@ -15,3 +15,4 @@
 14,cnn_bilstm_seq24,data/splits,31415,1.42e-005,2.19e-006,7.01e-004,32,True
 15,cnn_bilstm_seq24,data/splits,96406,7.87e-005,9.02e-005,1.19e-006,192,False
 16,cnn_lstm_meanpool,data/splits_10s,35165,2.90e-004,7.94e-006,1.18e-005,192,False
+17,cnn_lstm_meanpool,data/splits,66659,1.85e-004,3.73e-006,9.55e-004,256,False
