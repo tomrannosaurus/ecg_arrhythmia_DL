@@ -1,0 +1,92 @@
+{
+  "config": {
+    "run_id": "bilstm_seed42_20251211_145502",
+    "timestamp": "20251211_145502",
+    "datetime": "2025-12-11T14:55:03.717026",
+    "model_name": "bilstm",
+    "model_file": "model_bilstm.py",
+    "model_class": "CNNBiLSTM",
+    "split_dir": "data/splits",
+    "batch_size": 24,
+    "num_epochs": 100,
+    "patience": 10,
+    "seed": 42,
+    "optimizer": "Adam",
+    "learning_rate": 0.005,
+    "rnn_learning_rate": 0.001,
+    "differential_lr": true,
+    "weight_decay": 1e-06,
+    "freeze_cnn": false,
+    "scheduler": "ReduceLROnPlateau",
+    "scheduler_mode": "max",
+    "scheduler_factor": 0.5,
+    "scheduler_patience": 5,
+    "gradient_clip_norm": 1.0,
+    "save_dir": "checkpoints",
+    "model_path": "checkpoints\\bilstm_seed42_20251211_145502.pt",
+    "log_path": "checkpoints\\bilstm_seed42_20251211_145502_history.json",
+    "results_path": "checkpoints\\bilstm_seed42_20251211_145502_results.json",
+    "device": "cuda",
+    "user": "tomra",
+    "platform": "Windows",
+    "torch_version": "2.9.1+cu128",
+    "model_parameters": 316612,
+    "criterion": "CrossEntropyLoss",
+    "class_weights": [
+      0.4279378354549408,
+      2.9077935218811035,
+      0.8170527219772339,
+      10.48245906829834
+    ]
+  },
+  "train_loss": [
+    1.2312647376144141
+  ],
+  "train_acc": [
+    0.3639840816728306
+  ],
+  "val_loss": [
+    1.1603914465075769
+  ],
+  "val_acc": [
+    0.47700170357751276
+  ],
+  "val_f1": [
+    0.44022521736562675
+  ],
+  "val_auroc": [
+    0.5713254665213604
+  ],
+  "val_sensitivity": [
+    [
+      0.7186582335667495,
+      0.3226527570789866,
+      0.04694736842105263,
+      0.8259493670886076
+    ]
+  ],
+  "val_specificity": [
+    [
+      0.4013732833957553,
+      0.8936781609195402,
+      0.95367199391172,
+      0.8542084838752844
+    ]
+  ],
+  "learning_rate": [
+    0.005
+  ],
+  "learning_rate_dict": [
+    {
+      "cnn": 0.005,
+      "lstm": 0.001,
+      "fc": 0.005
+    }
+  ],
+  "epochs_completed": 1,
+  "best_epoch": 1,
+  "best_val_f1": 0.44022521736562675,
+  "stopped_early": false,
+  "start_time": "2025-12-11T14:55:05.884687",
+  "end_time": null
+}
