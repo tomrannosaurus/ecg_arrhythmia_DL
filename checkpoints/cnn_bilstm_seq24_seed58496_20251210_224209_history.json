@@ -1,0 +1,92 @@
+{
+  "config": {
+    "run_id": "cnn_bilstm_seq24_seed58496_20251210_224209",
+    "timestamp": "20251210_224209",
+    "datetime": "2025-12-10T22:42:09.671250",
+    "model_name": "cnn_bilstm_seq24",
+    "model_file": "model_cnn_bilstm_seq24.py",
+    "model_class": "CNNBiLSTMSeq24",
+    "split_dir": "data/splits",
+    "batch_size": 64,
+    "num_epochs": 100,
+    "patience": 10,
+    "seed": 58496,
+    "optimizer": "Adam",
+    "learning_rate": 0.000109,
+    "rnn_learning_rate": 5.11e-05,
+    "differential_lr": true,
+    "weight_decay": 0.000109,
+    "freeze_cnn": false,
+    "scheduler": "ReduceLROnPlateau",
+    "scheduler_mode": "max",
+    "scheduler_factor": 0.5,
+    "scheduler_patience": 5,
+    "gradient_clip_norm": 1.0,
+    "save_dir": "checkpoints",
+    "model_path": "checkpoints/cnn_bilstm_seq24_seed58496_20251210_224209.pt",
+    "log_path": "checkpoints/cnn_bilstm_seq24_seed58496_20251210_224209_history.json",
+    "results_path": "checkpoints/cnn_bilstm_seq24_seed58496_20251210_224209_results.json",
+    "device": "cuda",
+    "user": "navak",
+    "platform": "Linux",
+    "torch_version": "2.8.0+cu128",
+    "model_parameters": 316612,
+    "criterion": "CrossEntropyLoss",
+    "class_weights": [
+      0.4279378354549408,
+      2.9077935218811035,
+      0.8170527219772339,
+      10.48245906829834
+    ]
+  },
+  "train_loss": [
+    1.2537096084343444
+  ],
+  "train_acc": [
+    0.36228256436938394
+  ],
+  "val_loss": [
+    1.2151239645281595
+  ],
+  "val_acc": [
+    0.39025029484995416
+  ],
+  "val_f1": [
+    0.3682800858385773
+  ],
+  "val_auroc": [
+    0.553581418076156
+  ],
+  "val_sensitivity": [
+    [
+      0.5754461260447256,
+      0.4128166915052161,
+      0.007789473684210527,
+      0.8544303797468354
+    ]
+  ],
+  "val_specificity": [
+    [
+      0.4705056179775281,
+      0.7720545977011494,
+      0.9903919330289194,
+      0.8234310183326643
+    ]
+  ],
+  "learning_rate": [
+    0.000109
+  ],
+  "learning_rate_dict": [
+    {
+      "cnn": 0.000109,
+      "lstm": 5.11e-05,
+      "fc": 0.000109
+    }
+  ],
+  "epochs_completed": 1,
+  "best_epoch": 1,
+  "best_val_f1": 0.3682800858385773,
+  "stopped_early": false,
+  "start_time": "2025-12-10T22:42:10.562864",
+  "end_time": null
+}

@@ -15,3 +15,4 @@ RUN,MODEL,SPLIT_DIR,SEED,LR,RNN_LR,WD,BS,FREEZE
 8,cnn_lstm_ln,data/splits,81245,5.77e-05,1.68e-05,4.34e-06,192,false
 8,cnn_lstm_ln,data/splits,86748,3.03e-04,1.64e-06,1.36e-06,32,false
 9,cnn_lstm_ln,data/splits,79851,7.42e-04,6.11e-06,2.33e-06,32,true
+11,cnn_lstm_seq16,data/splits_10s,80824,1.53e-05,9.19e-06,3.39e-05,32,false
