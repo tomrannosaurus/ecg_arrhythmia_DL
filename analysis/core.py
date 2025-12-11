@@ -7,7 +7,7 @@ this is the ROOT module - it has NO dependencies on other project files.
 all other modules import from here.
 
 contents:
-- data loading (load_all_runs, filter_mps_runs)
+- data loading (load_all_runs, filter_mps_runs, filter_by_date)
 - feature engineering (add_derived_features, decompose_model_features)
 - encoding for ML (encode_features, decode_candidate, generate_candidates)
 - basic utilities (get_segment_length)
@@ -16,8 +16,17 @@ contents:
 import json
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+from datetime import datetime
 import numpy as np
 import pandas as pd
+
+
+# =============================================================================
+# constants
+# =============================================================================
+
+# default cutoff: December 11, 2025 2:00 PM ET 
+DEFAULT_CUTOFF_DATE = datetime(2025, 12, 11, 14, 0, 0)
 
 
 # =============================================================================
@@ -211,6 +220,63 @@ def load_all_runs(checkpoint_dir: str = "checkpoints") -> Optional[pd.DataFrame]
         print(f"  ({skipped} files skipped)")
     
     return df
+
+
+def filter_by_date(df: pd.DataFrame, 
+                   cutoff: datetime = None,
+                   verbose: bool = True) -> pd.DataFrame:
+    """
+    filter runs by date, excluding runs after the cutoff.
+    
+    args:
+        df: dataframe with run_id column (timestamp embedded in run_id)
+        cutoff: datetime cutoff (default: Dec 11, 2025 2pm ET / 7pm UTC)
+        verbose: print filtering info
+    
+    returns:
+        filtered dataframe
+    """
+    if cutoff is None:
+        cutoff = DEFAULT_CUTOFF_DATE
+    
+    if 'run_id' not in df.columns:
+        if verbose:
+            print("warning: no run_id column, skipping date filter")
+        return df
+    
+    original_count = len(df)
+    
+    def extract_timestamp(run_id: str) -> Optional[datetime]:
+        """extract datetime from run_id like 'cnn_lstm_seed42_20251208_123324'"""
+        if not isinstance(run_id, str):
+            return None
+        parts = run_id.split('_')
+        # find timestamp parts (YYYYMMDD_HHMMSS format)
+        for i in range(len(parts) - 1):
+            if len(parts[i]) == 8 and parts[i].isdigit():
+                try:
+                    date_str = parts[i]
+                    time_str = parts[i + 1] if i + 1 < len(parts) and len(parts[i + 1]) == 6 and parts[i + 1].isdigit() else "000000"
+                    return datetime.strptime(f"{date_str}_{time_str}", "%Y%m%d_%H%M%S")
+                except ValueError:
+                    continue
+        return None
+    
+    # extract timestamps and filter
+    timestamps = df['run_id'].apply(extract_timestamp)
+    valid_mask = timestamps.notna()
+    before_cutoff = timestamps <= cutoff
+    
+    # keep runs that are before cutoff OR have no parseable timestamp
+    keep_mask = before_cutoff | ~valid_mask
+    df_filtered = df[keep_mask].copy()
+    
+    if verbose:
+        removed = original_count - len(df_filtered)
+        if removed > 0:
+            print(f"filtering {removed} runs after {cutoff.strftime('%Y-%m-%d %H:%M')} ({original_count} → {len(df_filtered)})")
+    
+    return df_filtered
 
 
 def filter_mps_runs(df: pd.DataFrame) -> pd.DataFrame:
@@ -440,7 +506,7 @@ def remove_near_duplicates(df: pd.DataFrame,
     if feature_cols is None:
         # columns to check
         feature_cols = ['model', 'segment_length', 'batch_size', 'diff_lr', 'cnn_frozen',
-                        'log_lr', 'log_rnn_lr', 'log_wd','test_ft','test_acc','test_auroc']
+                        'log_lr', 'log_rnn_lr', 'log_wd', 'test_f1', 'test_acc', 'test_auroc']
     
     feature_cols = [c for c in feature_cols if c in df.columns]
     if not feature_cols:
