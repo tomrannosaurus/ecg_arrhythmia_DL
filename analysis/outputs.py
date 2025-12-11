@@ -376,7 +376,7 @@ def generate_text_report(df: pd.DataFrame, response: str = 'test_f1',
     for model, row in model_stats.iterrows():
         lines.append(f"  {model:25s} mean={row['mean']:.4f} std={row['std']:.4f} n={int(row['count'])}")
     
-    # 4. VARIANCE DECOMPOSITION
+    # 4. VARIANCE DECOMPOSITION (EXPANDED)
     lines.append("\n4. VARIANCE DECOMPOSITION")
     lines.append("-"*40)
     var_comp = compute_variance_components_detailed(df, response)
@@ -445,34 +445,25 @@ def generate_text_report(df: pd.DataFrame, response: str = 'test_f1',
     lines.append("\n7. BEST EMPIRICAL RUN")
     lines.append("-"*40)
     
-    # group by config + seed, average results for duplicate runs
+    # simply pick the row with the best observed response
+    best_idx = df[response].idxmax()
+    best_run = df.loc[best_idx]
+    
+    lines.append(f"best {response}: {best_run[response]:.4f}")
+    lines.append("configuration:")
     config_cols = ['model', 'segment_length', 'batch_size', 'diff_lr', 'cnn_frozen', 
                    'lr', 'rnn_lr', 'weight_decay', 'seed']
-    config_cols = [c for c in config_cols if c in df.columns]
-    
-    if config_cols:
-        # average results for identical config+seed combinations
-        agg_cols = {response: 'mean'}
-        if 'test_auroc' in df.columns:
-            agg_cols['test_auroc'] = 'mean'
-        if 'test_acc' in df.columns:
-            agg_cols['test_acc'] = 'mean'
-        
-        df_averaged = df.groupby(config_cols, dropna=False).agg(agg_cols).reset_index()
-        best_idx = df_averaged[response].idxmax()
-        best_run = df_averaged.loc[best_idx]
-        
-        lines.append(f"best {response}: {best_run[response]:.4f}")
-        lines.append("configuration:")
-        for col in config_cols:
-            val = best_run[col]
-            if isinstance(val, float) and not pd.isna(val):
-                if val < 0.01:
-                    lines.append(f"  {col}: {val:.2e}")
-                else:
-                    lines.append(f"  {col}: {val:.4f}")
+    for col in config_cols:
+        if col not in df.columns:
+            continue
+        val = best_run[col]
+        if isinstance(val, float) and not pd.isna(val):
+            if val < 0.01:
+                lines.append(f"  {col}: {val:.2e}")
             else:
-                lines.append(f"  {col}: {val}")
+                lines.append(f"  {col}: {val:.4f}")
+        else:
+            lines.append(f"  {col}: {val}")
     
     # 8. MULTI-METHOD OPTIMIZATION COMPARISON
     lines.append("\n8. MULTI-METHOD OPTIMIZATION COMPARISON")
