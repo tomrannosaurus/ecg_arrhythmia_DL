@@ -1,0 +1,88 @@
+{
+  "config": {
+    "run_id": "attention_seed456_20251210_234031",
+    "timestamp": "20251210_234031",
+    "datetime": "2025-12-10T23:40:31.889480",
+    "model_name": "attention",
+    "model_file": "model_attention.py",
+    "model_class": "CNNLSTMAttention",
+    "split_dir": "data/splits_10s",
+    "batch_size": 64,
+    "num_epochs": 100,
+    "patience": 10,
+    "seed": 456,
+    "optimizer": "Adam",
+    "learning_rate": 0.0001,
+    "rnn_learning_rate": null,
+    "differential_lr": false,
+    "weight_decay": 0.0001,
+    "freeze_cnn": false,
+    "scheduler": "ReduceLROnPlateau",
+    "scheduler_mode": "max",
+    "scheduler_factor": 0.5,
+    "scheduler_patience": 5,
+    "gradient_clip_norm": 1.0,
+    "save_dir": "checkpoints",
+    "model_path": "checkpoints\\attention_seed456_20251210_234031.pt",
+    "log_path": "checkpoints\\attention_seed456_20251210_234031_history.json",
+    "results_path": "checkpoints\\attention_seed456_20251210_234031_results.json",
+    "device": "cuda",
+    "user": "tomra",
+    "platform": "Windows",
+    "torch_version": "2.9.1+cu128",
+    "model_parameters": 127445,
+    "criterion": "CrossEntropyLoss",
+    "class_weights": [
+      0.42863065004348755,
+      2.954738140106201,
+      0.8054326772689819,
+      11.496771812438965
+    ]
+  },
+  "train_loss": [
+    1.3297719379623016
+  ],
+  "train_acc": [
+    0.36863944092596634
+  ],
+  "val_loss": [
+    1.2320386393503708
+  ],
+  "val_acc": [
+    0.45507868383404865
+  ],
+  "val_f1": [
+    0.46223801344439086
+  ],
+  "val_auroc": [
+    0.5528974418769192
+  ],
+  "val_sensitivity": [
+    [
+      0.6177766895200784,
+      0.1930379746835443,
+      0.19857142857142857,
+      0.6839080459770115
+    ]
+  ],
+  "val_specificity": [
+    [
+      0.49931176875430144,
+      0.9141239383453916,
+      0.830879345603272,
+      0.8560739436619719
+    ]
+  ],
+  "learning_rate": [
+    0.0001
+  ],
+  "learning_rate_dict": [
+    null
+  ],
+  "epochs_completed": 1,
+  "best_epoch": 1,
+  "best_val_f1": 0.46223801344439086,
+  "stopped_early": false,
+  "start_time": "2025-12-10T23:40:33.815982",
+  "end_time": null
+}
