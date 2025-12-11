@@ -8,7 +8,7 @@
 
 ## Project Status
 
-**Current Phase:** Final deliverables (paper writing and presentation preparation)  
+**Current Phase:** Final paper writing  
 **Experimental Work:** Complete  
 **Paper Deadline:** December 11, 2025  
 **Presentation Date:** December 1, 2025
@@ -17,16 +17,35 @@
 
 ## Key Results
 
-### Best Performing Models (CUDA, from results_table.csv)
+### Best Performing Models (from 264 CUDA training runs)
 
-| Model | Test F1 | Test AUROC | Test Accuracy | Parameters |
-|-------|---------|------------|---------------|------------|
-| **CNN-LSTM** | **0.756** | **0.845** | **0.763** | 308,420 |
-| CNN-LSTM (seed 123) | 0.755 | 0.840 | 0.756 | 308,420 |
-| CNN-LSTM (seed 1) | 0.750 | 0.838 | 0.754 | 308,420 |
-| CNN-LSTM-LN | 0.747 | 0.838 | 0.748 | 308,676 |
+| Model | Test F1 | Test AUROC | Test Accuracy | Seed | Parameters |
+|-------|---------|------------|---------------|------|------------|
+| **CNN-LSTM** | **0.7500** | 0.845 | 0.763 | 42 | 308,420 |
+| CNN-LSTM-LN | 0.7384 | 0.838 | 0.748 | 100 | 308,676 |
+| CNN-LSTM | 0.7340 | 0.840 | 0.756 | 123 | 308,420 |
+| CNN-LSTM-LN | 0.7287 | - | - | - | 308,676 |
+| CNN-LSTM | 0.7153 | - | - | - | 308,420 |
 
-**Key Finding:** After resolving hardware-specific training failures, the CNN-LSTM hybrid architecture achieved strong performance (F1=0.756, AUROC=0.845), demonstrating that serial CNN to LSTM architectures can effectively capture both spatial and temporal patterns in ECG signals when properly implemented.
+**Key Finding:** Serial CNN-LSTM architecture achieves F1=0.750 (AUROC=0.845), demonstrating effective capture of both spatial and temporal ECG patterns. Design of Experiments analysis across 264 runs reveals that **batch size (η²=0.221)** and **learning rates (η²=0.149 RNN, η²=0.122 CNN)** have larger impact on performance than model architecture choice (η²=0.058).
+
+### Design of Experiments (DOE) Insights
+
+**Main Effects (264 CUDA runs, MPS excluded):**
+- **Batch Size:** η²=0.221 (most important factor)
+- **RNN Learning Rate:** η²=0.149
+- **Segment Length:** η²=0.128 (optimal: 5s)
+- **CNN Learning Rate:** η²=0.122
+- **Frozen CNN:** η²=0.068
+- **Model Architecture:** η²=0.058 (least important)
+
+**Model Rankings (mean F1 across all configurations):**
+1. BiLSTM: 0.5173 ± 0.094 (n=21)
+2. Attention: 0.5129 ± 0.132 (n=15)
+3. GRU: 0.4984 ± 0.103 (n=14)
+4. CNN-only: 0.4646 ± 0.084 (n=60)
+
+**Insight:** Hyperparameter tuning (batch size, learning rates) matters more than architecture choice. Best single run (CNN-LSTM, F1=0.750) outperforms average across all architectures.
 
 ---
 
@@ -38,7 +57,7 @@ During development, we discovered a critical bug in PyTorch's MPS (Metal Perform
 
 **Root Cause:** Silent gradient failures in MPS kernel operations (addcmul_, addcdiv_) prevented gradients from flowing correctly through LSTM gates during backpropagation.
 
-**Solution:** Re-running all experiments on CUDA revealed the original CNN-LSTM architecture trained successfully, achieving F1=0.756 and AUROC=0.845.
+**Solution:** Re-running all experiments on CUDA revealed the original CNN-LSTM architecture trained successfully, achieving F1=0.750 and AUROC=0.845.
 
 **Impact:** All hybrid models required complete re-evaluation on CUDA hardware. This finding emphasizes the importance of validating deep learning failures across multiple hardware backends before attributing them to architectural issues.
 
@@ -48,7 +67,7 @@ During development, we discovered a critical bug in PyTorch's MPS (Metal Perform
 
 ---
 
-## 📁 Project Overview
+## Project Overview
 
 This project implements hybrid CNN-RNN architectures for automated ECG arrhythmia classification using the **PhysioNet 2017 Challenge** dataset. We classify single-lead ECG recordings into four categories:
 - Normal rhythm
@@ -83,7 +102,7 @@ This project implements hybrid CNN-RNN architectures for automated ECG arrhythmi
 ### 1. CNN-LSTM (308,420 parameters) **Best Model**
 Serial CNN to LSTM architecture with standard 2-layer LSTM. CNN extracts features → LSTM models temporal dependencies → FC classifier.  
 **Implementation:** model_cnn_lstm.py  
-**Test Performance:** F1=0.756, AUROC=0.845, Accuracy=0.763
+**Test Performance:** F1=0.750, AUROC=0.845, Accuracy=0.763
 
 ### 2. CNN-LSTM-LN (308,676 parameters)
 CNN-LSTM with LayerNorm after LSTM output for improved gradient flow.  
@@ -245,12 +264,12 @@ python grad_cam_ecg.py --checkpoint checkpoints/cnn_lstm_seed42_*.pt --num-sampl
 
 | Architecture | F1 Score | AUROC | Accuracy | Params | Device |
 |--------------|----------|-------|----------|--------|--------|
-| CNN-LSTM | **0.756** | **0.845** | **0.763** | 308K | CUDA |
-| CNN-LSTM-LN | 0.747 | 0.838 | 0.748 | 309K | CUDA |
-| CNN-only (MPS) | 0.599 | 0.727 | 0.596 | 44K | MPS |
+| CNN-LSTM | **0.750** | **0.845** | **0.763** | 308K | CUDA |
+| CNN-LSTM-LN | 0.738 | 0.838 | 0.748 | 309K | CUDA |
+
 
 ### Key Insights
-1. **Serial CNN-LSTM architecture achieves strong performance:** Combining spatial feature extraction with temporal modeling yields F1=0.756 and AUROC=0.845
+1. **Serial CNN-LSTM architecture achieves strong performance:** Combining spatial feature extraction with temporal modeling yields F1=0.750 and AUROC=0.845
 2. **Hardware backend significantly impacts training:** LSTM models fail silently on MPS but train successfully on CUDA
 3. **Layer normalization provides modest improvements:** CNN-LSTM-LN achieves comparable performance to standard CNN-LSTM
 4. **Class imbalance remains challenging:** All models show lower performance on minority classes (Atrial Fibrillation, Noisy)
@@ -299,22 +318,17 @@ python grad_cam_ecg.py --checkpoint checkpoints/cnn_lstm_seed42_*.pt --num-sampl
 - [x] **[T10.4]** Test differential learning rates for CNN and RNN components
 - [x] **Discover critical MPS backend bug** causing LSTM training failures on Apple Silicon (F1=0.14)
 - [x] **Complete CUDA re-evaluation** of all models after MPS bug discovery
-  - CNN-LSTM achieves F1=0.756, AUROC=0.845 on CUDA (vs F1=0.14 on MPS)
+  - CNN-LSTM achieves F1=0.750, AUROC=0.845 on CUDA (vs F1=0.14 on MPS)
   - Validates architecture effectiveness across hardware backends
 
-### Phase 4: Final Deliverables (Current) 🔄
+### Phase 4: Final Deliverables 🔄
 - [x] **[T11]** Implement interpretability analysis
   - [x] Grad-CAM visualization for CNN feature importance
-  - [ ] Attention weight visualization for temporal focus [TODO: MOVE THIS TO FUTURE WORK]
-  - [ ] Case study analysis of model predictions [TODO: MOVE THIS TO FUTURE WORK]
-- [x] **[T12]** Final model training and cross-validation
-  - [x] Train on full dataset with best hyperparameters
-  - [ ] K-fold cross-validation for robust performance estimates [TODO: MOVE THIS TO FUTURE WORK]
-  - [x] Finalize results tables and statistical analysis
-- [x] **[T13]** Prepare and deliver presentation (Dec 1, 2025)
-  - [x] Build presentation slides with key results
-  - [x] Rehearse timing and delivery
-- [ ] **[T14]** Write final paper
+- [x] **[T12]** Final model training and analysis
+  - [x] Train with optimized hyperparameters (F1=0.750 achieved)
+  - [x] Finalize results tables and DOE statistical analysis (264 runs)
+- [x] **[T13]** Deliver presentations (Dec 1 & 4, 2025)
+- [ ] **[T14]** Write final paper (in progress)
   - [ ] Methods section (architecture, preprocessing, training)
   - [ ] Results section (tables, figures, statistical tests)
   - [ ] Discussion and interpretation
@@ -323,11 +337,11 @@ python grad_cam_ecg.py --checkpoint checkpoints/cnn_lstm_seed42_*.pt --num-sampl
 - [ ] **[T15]** Submit final paper (Dec 11, 2025) and archive GitHub release
   - [ ] Final proofreading and formatting
   - [ ] Tag GitHub release with code, configs, and trained models
-  - [ ] Archive datasets and checkpoints
 
 ### Key Findings & Lessons Learned
-- **MPS Backend Bug:** PyTorch MPS backend on Apple Silicon had silent gradient failures in LSTM operations (addcmul_, addcdiv_), causing complete learning collapse (F1=0.14 vs 0.756 on CUDA)
-- **Best Architecture:** CNN-LSTM hybrid achieves F1=0.756, AUROC=0.845, demonstrating serial architectures effectively capture spatial and temporal ECG patterns
+- **MPS Backend Bug:** PyTorch MPS backend on Apple Silicon had silent gradient failures in LSTM operations (addcmul_, addcdiv_), causing complete learning collapse (F1=0.14 vs 0.750 on CUDA)
+- **Best Architecture:** CNN-LSTM achieves F1=0.750, AUROC=0.845, demonstrating serial architectures effectively capture spatial and temporal ECG patterns
+- **Hyperparameters Matter Most:** DOE analysis reveals batch size (η²=0.221) and learning rates (η²=0.149, 0.122) explain more variance than model architecture (η²=0.058)
 - **Class Imbalance Critical:** Weighted loss with 24:1 ratio essential for minority class detection (AF=9%, Noisy=2%)
 - **Hardware Validation Important:** Always validate failures across multiple backends before attributing to architecture
 - **Recording-Level Splits Essential:** Segment-level splits caused severe data leakage, inflating performance metrics
@@ -426,7 +440,7 @@ python grad_cam_ecg.py --checkpoint checkpoints/cnn_lstm_seed42_*.pt --num-sampl
 
 1. **Hardware backend validation is critical:** Apparent architectural failures may be hardware or backend-specific issues rather than fundamental design problems
 2. **Recording-level splitting prevents data leakage:** Segment-level splitting causes overestimation of model performance due to temporal correlation between segments from the same recording
-3. **Serial CNN to LSTM architectures are effective:** Combining spatial feature extraction with temporal sequence modeling achieves strong performance (F1=0.756)
+3. **Serial CNN to LSTM architectures are effective:** Combining spatial feature extraction with temporal sequence modeling achieves strong performance (F1=0.750)
 4. **Class imbalance mitigation is challenging:** Despite weighted loss functions and careful sampling strategies, minority class performance remains a significant challenge
 5. **Regularization and normalization matter:** Layer normalization and dropout significantly improve model generalization
 
@@ -434,11 +448,16 @@ python grad_cam_ecg.py --checkpoint checkpoints/cnn_lstm_seed42_*.pt --num-sampl
 
 ## Future Work
 
-- Multi-lead ECG analysis (12-lead ECG classification)
-- Real-time inference optimization for clinical deployment
-- Transformer-based temporal modules as alternatives to LSTM
-- Attention visualization and interpretability analysis
+**Interpretability & Validation:**
+- Attention weight visualization for temporal focus patterns
+- Case study analysis of individual model predictions
+- K-fold cross-validation for robust performance estimates
 - Clinical validation with cardiologist expertise
+
+**Architecture & Deployment:**
+- Multi-lead ECG analysis (12-lead ECG classification)
+- Transformer-based temporal modules as alternatives to RNNs
+- Real-time inference optimization for clinical deployment
 - Deployment as web service for real-time cardiac monitoring
 
 
