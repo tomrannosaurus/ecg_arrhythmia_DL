@@ -17,7 +17,7 @@ TARGET_CONFIGS = [
     ('Linear',    'bilstm',    24, 5.00e-03, 1.00e-03, 1.00e-06, 42),
     ('RF',        'cnn_lstm',  48, 1.10e-03, None,     7.70e-05, 42),
     ('NN',        'bilstm',    24, 1.18e-03, 1.40e-04, 1.24e-06, 42),
-    ('Empirical', 'cnn_lstm',  64, 1.00e-04, None, 1.00e-04, 1),
+    ('Empirical', 'cnn_lstm',  64, 1.00e-04, None,     1.00e-04, 1),
 ]
 
 
@@ -87,7 +87,12 @@ def main(checkpoint_dir="checkpoints", output=None):
     # find each optimizer's config (may have multiple matches)
     for method, model, bs, lr, rnn_lr, wd, seed in TARGET_CONFIGS:
         print(f"\nSearching for {method}: {model}...")
+        
         matches = find_matching_runs(df, model, bs, lr, rnn_lr, wd, seed)
+        
+        # for empirical, only take the single best run
+        if method == 'Empirical' and matches is not None and len(matches) > 1:
+            matches = matches.head(1)
         
         if matches is not None and not matches.empty:
             # add individual runs
