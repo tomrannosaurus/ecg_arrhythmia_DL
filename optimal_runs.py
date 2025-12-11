@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Find optimal candidate runs using existing results_table infrastructure.
+find optimal candidate runs using existing results_table infrastructure.
 
 Usage:
     python optimal_runs.py
@@ -9,9 +9,16 @@ Usage:
 
 import argparse
 import numpy as np
+from datetime import datetime
 from results_table import generate_table
 
-# Target configs: (method, model, batch_size, lr, rnn_lr, weight_decay, seed)
+# try to import cutoff from analysis pipeline, fallback to local definition
+try:
+    from analysis.core import DEFAULT_CUTOFF_DATE
+except ImportError:
+    DEFAULT_CUTOFF_DATE = datetime(2025, 12, 11, 14, 0, 0)
+
+# target configs: (method, model, batch_size, lr, rnn_lr, weight_decay, seed)
 TARGET_CONFIGS = [
     ('Greedy', 'attention', 64, 5.00e-04, 5.00e-04, 1.00e-04, 42),
     ('Linear', 'bilstm',    24, 5.00e-03, 1.00e-03, 1.00e-06, 42),
@@ -20,8 +27,8 @@ TARGET_CONFIGS = [
 ]
 
 
-def approx_eq(a, b, tol=0.05):
-    """Check approximate equality (within 5%)."""
+def approx_eq(a, b, tol=0.02):
+    """check approximate equality (within 2%)."""
     if a is None or b is None:
         return a is None and b is None
     if a == 0 and b == 0:
@@ -32,8 +39,8 @@ def approx_eq(a, b, tol=0.05):
         return False
 
 
-def find_matching_run(df, model, batch_size, lr, rnn_lr, weight_decay, seed):
-    """Find run matching the specified hyperparameters."""
+def find_matching_runs(df, model, batch_size, lr, rnn_lr, weight_decay, seed):
+    """find all runs matching the specified hyperparameters."""
     mask = (
         (df['Model'] == model) &
         (df['Batch_Size'] == batch_size) &
@@ -44,28 +51,28 @@ def find_matching_run(df, model, batch_size, lr, rnn_lr, weight_decay, seed):
     if candidates.empty:
         return None
     
-    # Filter by LR
+    # filter by lr
     candidates = candidates[candidates['LR'].apply(lambda x: approx_eq(x, lr))]
     if candidates.empty:
         return None
     
-    # Filter by RNN_LR if specified
+    # filter by rnn_lr if specified
     if rnn_lr is not None:
         candidates = candidates[candidates['RNN_LR'].apply(lambda x: approx_eq(x, rnn_lr))]
         if candidates.empty:
             return None
     
-    # Filter by weight decay
+    # filter by weight decay
     candidates = candidates[candidates['Weight_Decay'].apply(lambda x: approx_eq(x, weight_decay))]
     if candidates.empty:
         return None
     
-    # Return best F1 among matches
-    return candidates.loc[candidates['Test_F1'].idxmax()]
+    # return all matches (sorted by f1 descending)
+    return candidates.sort_values('Test_F1', ascending=False)
 
 
 def main(checkpoint_dir="checkpoints", output=None):
-    # Load all runs
+    # load all runs
     df = generate_table(checkpoint_dir=checkpoint_dir, sort_by='Test_F1', ascending=False)
     if df is None:
         print("No runs found.")
@@ -73,51 +80,84 @@ def main(checkpoint_dir="checkpoints", output=None):
     
     results = []
     
-    # Find each optimizer's config
+    # find each optimizer's config (may have multiple matches)
     for method, model, bs, lr, rnn_lr, wd, seed in TARGET_CONFIGS:
         print(f"\nSearching for {method}: {model}...")
-        match = find_matching_run(df, model, bs, lr, rnn_lr, wd, seed)
+        matches = find_matching_runs(df, model, bs, lr, rnn_lr, wd, seed)
         
-        if match is not None:
-            row = match.to_dict()
-            row['Method'] = method
-            results.append(row)
-            print(f"  Found: {row['Run_ID']} (F1={row['Test_F1']:.4f})")
+        if matches is not None and not matches.empty:
+            # add individual runs
+            for _, match in matches.iterrows():
+                row = match.to_dict()
+                row['Method'] = method
+                results.append(row)
+            print(f"  Found {len(matches)} run(s): {', '.join(matches['Run_ID'].tolist())}")
+            
+            # add average row if multiple runs
+            if len(matches) > 1:
+                avg_row = {
+                    'Method': f"{method} (avg)",
+                    'Model': model,
+                    'Batch_Size': bs,
+                    'LR': lr,
+                    'RNN_LR': rnn_lr,
+                    'Weight_Decay': wd,
+                    'Test_F1': matches['Test_F1'].mean(),
+                    'Test_AUROC': matches['Test_AUROC'].mean(),
+                    'Test_Accuracy': matches['Test_Accuracy'].mean(),
+                    'Seed': seed,
+                    'Platform': 'avg',
+                }
+                results.append(avg_row)
         else:
-            print("  NOT FOUND - needs training")
+            print(f"  NOT FOUND - needs training")
     
-    # Find empirical best
-    print("\nSearching for Empirical Best...")
-    best_idx = df['Test_F1'].idxmax()
-    best_row = df.loc[best_idx].to_dict()
-    best_row['Method'] = 'Empirical'
+    # find empirical best (from experiments before cutoff date)
+    print(f"\nSearching for Empirical Best (before {DEFAULT_CUTOFF_DATE})...")
     
-    # Check if empirical best already in results
-    is_dup = any(r.get('Run_ID') == best_row['Run_ID'] for r in results)
-    if is_dup:
-        for r in results:
-            if r.get('Run_ID') == best_row['Run_ID']:
-                r['Method'] = r['Method'] + '*'
-        print(f"  Same as {best_row['Run_ID']}")
+    # filter to runs before cutoff
+    def parse_date(date_str):
+        try:
+            return datetime.fromisoformat(date_str)
+        except:
+            return None
+    
+    df['_parsed_date'] = df['Date'].apply(parse_date)
+    experiment_runs = df[df['_parsed_date'].apply(lambda d: d is not None and d < DEFAULT_CUTOFF_DATE)]
+    
+    if experiment_runs.empty:
+        print("  No runs found before cutoff date")
     else:
-        results.append(best_row)
-        print(f"  Found: {best_row['Run_ID']} (F1={best_row['Test_F1']:.4f})")
+        best_idx = experiment_runs['Test_F1'].idxmax()
+        best_row = experiment_runs.loc[best_idx].to_dict()
+        best_row['Method'] = 'Empirical'
+        
+        # check if empirical best already in results
+        is_dup = any(r.get('Run_ID') == best_row['Run_ID'] for r in results)
+        if is_dup:
+            for r in results:
+                if r.get('Run_ID') == best_row['Run_ID']:
+                    r['Method'] = r['Method'] + '*'
+            print(f"  Same as {best_row['Run_ID']}")
+        else:
+            results.append(best_row)
+            print(f"  Found: {best_row['Run_ID']} (F1={best_row['Test_F1']:.4f})")
     
     if not results:
         print("\nNo matching runs found.")
         return
     
-    # Build output table
+    # build output table
     import pandas as pd
     results_df = pd.DataFrame(results)
     
-    # Select and order columns for output
+    # select and order columns for output (including Platform/OS)
     cols = ['Method', 'Model', 'Batch_Size', 'LR', 'RNN_LR', 'Weight_Decay', 
-            'Test_F1', 'Test_AUROC', 'Test_Accuracy', 'Seed']
+            'Test_F1', 'Test_AUROC', 'Test_Accuracy', 'Platform', 'Seed']
     cols = [c for c in cols if c in results_df.columns]
     results_df = results_df[cols]
     
-    # Format for display
+    # format for display
     def fmt_lr(x):
         if x is None:
             return "-"
@@ -136,22 +176,22 @@ def main(checkpoint_dir="checkpoints", output=None):
         if col in display_df.columns:
             display_df[col] = display_df[col].apply(lambda x: f"{x:.4f}")
     
-    # Print table
-    print("\n" + "=" * 110)
+    # print table
+    print("\n" + "=" * 120)
     print("Table: Optimal Model Configurations and Performance Metrics")
-    print("=" * 110)
+    print("=" * 120)
     print(display_df.to_string(index=False))
-    print("=" * 110)
-    print("\n* Method also achieved Empirical Best F1 score")
+    print("=" * 120)
+    print("\n(avg) = average across multiple runs of same configuration")
     
-    # Save if requested
+    # save if requested
     if output:
         with open(output, 'w') as f:
             f.write("Table: Optimal Model Configurations and Performance Metrics\n")
-            f.write("=" * 110 + "\n\n")
+            f.write("=" * 120 + "\n\n")
             f.write(display_df.to_string(index=False))
-            f.write("\n" + "=" * 110 + "\n")
-            f.write("\n* Method also achieved Empirical Best F1 score\n")
+            f.write("\n" + "=" * 120 + "\n")
+            f.write("\n(avg) = average across multiple runs of same configuration\n")
         print(f"\nSaved to {output}")
 
 
