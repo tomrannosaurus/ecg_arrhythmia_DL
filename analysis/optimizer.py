@@ -77,103 +77,6 @@ def get_bin_representative(df: pd.DataFrame, factor: str, bin_label: str,
 
 
 # =============================================================================
-# helper: remove near-duplicate rows to prevent multicollinearity
-# =============================================================================
-
-def remove_near_duplicates(df: pd.DataFrame, 
-                           feature_cols: List[str] = None,
-                           tolerance: float = 0.01,
-                           verbose: bool = True) -> pd.DataFrame:
-    """
-    remove rows that are nearly identical to prevent multicollinearity.
-    
-    for each pair of rows, if all feature values are within `tolerance` 
-    (relative for continuous, exact for categorical), keep only one.
-    
-    args:
-        df: input dataframe
-        feature_cols: columns to check for similarity (default: common HP columns)
-        tolerance: relative tolerance for continuous variables (0.01 = 1%)
-    
-    returns:
-        filtered dataframe with near-duplicates removed
-    """
-    if feature_cols is None:
-        # columns to check
-        feature_cols = ['model', 'segment_length', 'batch_size', 'diff_lr', 'cnn_frozen',
-                        'log_lr', 'log_rnn_lr', 'log_wd','test_ft','test_acc','test_auroc']
-    
-    feature_cols = [c for c in feature_cols if c in df.columns]
-    if not feature_cols:
-        return df
-    
-    n_original = len(df)
-    if n_original <= 1:
-        return df
-    
-    # identify continuous vs categorical columns
-    continuous_cols = [c for c in feature_cols if c.startswith('log_') or 
-                       df[c].dtype in ['float64', 'float32']]
-    categorical_cols = [c for c in feature_cols if c not in continuous_cols]
-    
-    # mark rows to keep
-    keep_mask = np.ones(len(df), dtype=bool)
-    indices = df.index.tolist()
-    
-    for i in range(len(df)):
-        if not keep_mask[i]:
-            continue
-        
-        for j in range(i + 1, len(df)):
-            if not keep_mask[j]:
-                continue
-            
-            # check if rows i and j are near-duplicates
-            is_duplicate = True
-            
-            # check categorical columns (must be exact match)
-            for col in categorical_cols:
-                val_i = df.loc[indices[i], col]
-                val_j = df.loc[indices[j], col]
-                if pd.isna(val_i) and pd.isna(val_j):
-                    continue
-                if pd.isna(val_i) or pd.isna(val_j) or val_i != val_j:
-                    is_duplicate = False
-                    break
-            
-            if not is_duplicate:
-                continue
-            
-            # check continuous columns (within tolerance)
-            for col in continuous_cols:
-                val_i = df.loc[indices[i], col]
-                val_j = df.loc[indices[j], col]
-                
-                if pd.isna(val_i) and pd.isna(val_j):
-                    continue
-                if pd.isna(val_i) or pd.isna(val_j):
-                    is_duplicate = False
-                    break
-                
-                # relative tolerance check
-                max_val = max(abs(val_i), abs(val_j), 1e-10)
-                if abs(val_i - val_j) / max_val > tolerance:
-                    is_duplicate = False
-                    break
-            
-            if is_duplicate:
-                keep_mask[j] = False
-    
-    df_filtered = df[keep_mask].copy()
-    n_removed = n_original - len(df_filtered)
-    
-    if verbose and n_removed > 0:
-        print(f"  removed {n_removed} near-duplicate rows ({n_original} → {len(df_filtered)})")
-    
-    return df_filtered
-
-
-# =============================================================================
 # greedy optimization (pure greedy, no regression)
 # =============================================================================
 
@@ -350,19 +253,24 @@ def optimize_greedy(df: pd.DataFrame, response: str = 'test_f1',
         df_current = df_current[df_current[best['factor']] == best['best_level']].copy()
         remaining.remove(best['factor'])
     
-    # build final config
+    # build final config from the best run in the filtered subset
     final_config = {}
-    for step in optimization_path:
-        if step['type'] == 'categorical':
-            final_config[step['factor']] = step['best_level']
-        else:
-            # for continuous, use the representative value
-            orig = step['factor'].replace('log_', '')
-            if step['representative_value'] is not None:
-                if step['factor'].startswith('log_'):
-                    final_config[orig] = 10 ** step['representative_value']
-                else:
-                    final_config[orig] = step['representative_value']
+    if len(df_current) > 0:
+        best_idx = df_current[response].idxmax()
+        best_run = df_current.loc[best_idx]
+        
+        # extract config from best run
+        config_cols = ['model', 'segment_length', 'batch_size', 'diff_lr', 'cnn_frozen']
+        for col in config_cols:
+            if col in df_current.columns and pd.notna(best_run.get(col)):
+                final_config[col] = best_run[col]
+        
+        # extract continuous values (convert from log)
+        log_cols = ['log_lr', 'log_rnn_lr', 'log_wd']
+        for log_col in log_cols:
+            if log_col in df_current.columns and pd.notna(best_run.get(log_col)):
+                orig = log_col.replace('log_', '')
+                final_config[orig] = 10 ** best_run[log_col]
     
     final_mean = df_current[response].mean() if len(df_current) > 0 else np.nan
     final_std = df_current[response].std() if len(df_current) > 0 else 0.0
@@ -731,7 +639,6 @@ def optimize_rf(df: pd.DataFrame, response: str = 'test_f1',
     )
     model.fit(X, y)
     
-    # cross-validation with error handling
     try:
         cv_scores = cross_val_score(model, X, y, cv=min(5, len(df_clean)), scoring='r2')
         cv_mean, cv_std = float(np.nanmean(cv_scores)), float(np.nanstd(cv_scores))
@@ -824,7 +731,6 @@ def optimize_nn(df: pd.DataFrame, response: str = 'test_f1',
     categorical_cols = [c for c in categorical_cols if c in df.columns]
     continuous_cols = [c for c in continuous_cols if c in df.columns]
     
-    # filter rows with NaN response
     df_clean = df[df[response].notna()].copy()
     if len(df_clean) < 10:
         if verbose:
@@ -948,7 +854,6 @@ def optimize_nn(df: pd.DataFrame, response: str = 'test_f1',
 
 def optimize(df: pd.DataFrame, method: str = 'greedy',
              response: str = 'test_f1', verbose: bool = True,
-             filter_duplicates: bool = True, duplicate_tolerance: float = 0.01,
              **kwargs) -> Dict:
     """
     unified optimization interface.
@@ -961,19 +866,11 @@ def optimize(df: pd.DataFrame, method: str = 'greedy',
         all: run all methods and compare
     
     args:
-        df: dataframe with experiment results
+        df: dataframe with experiment results (should already be filtered for near-duplicates)
         method: optimization method
         response: target metric column
         verbose: print progress
-        filter_duplicates: remove near-duplicate rows to prevent multicollinearity
-        duplicate_tolerance: relative tolerance for near-duplicate detection (0.01 = 1%)
     """
-    # preprocess: remove near-duplicates
-    if filter_duplicates:
-        if verbose:
-            print("\n[preprocessing] checking for near-duplicate rows...")
-        df = remove_near_duplicates(df, tolerance=duplicate_tolerance, verbose=verbose)
-    
     # separate kwargs by method
     greedy_keys = {'factors', 'continuous_factors', 'n_bins', 
                    'min_samples_per_level', 'min_samples_after_filter', 'significance_threshold'}
