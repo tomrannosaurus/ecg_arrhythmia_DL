@@ -21,3 +21,4 @@
 20,bilstm,data/splits,9674,8.12e-004,2.47e-005,8.25e-006,64,False
 21,bilstm,data/splits_20s,81458,4.45e-005,1.48e-006,4.00e-004,64,False
 22,simple_lstm,data/splits,46928,1.49e-005,3.85e-006,2.17e-006,32,True
+23,simple_lstm,data/splits_10s,96374,1.11e-005,2.83e-006,1.52e-004,64,False

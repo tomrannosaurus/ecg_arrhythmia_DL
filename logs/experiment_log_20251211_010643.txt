@@ -5,3 +5,5 @@
 4,cnn_only,data/splits_20s,9367,4.40e-004,n/a,2.66e-004,192,False
 5,cnn_only,data/splits_20s,53788,1.38e-004,n/a,1.35e-006,192,False
 6,cnn_only,data/splits_10s,95928,1.13e-004,n/a,2.11e-005,192,False
+7,cnn_lstm_ln,data/splits_10s,41316,5.55e-005,3.32e-006,1.60e-006,32,False
+8,cnn_lstm_ln,data/splits_20s,15356,4.50e-004,1.29e-005,8.09e-004,192,False
