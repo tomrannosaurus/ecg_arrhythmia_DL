@@ -1,0 +1,17 @@
+RUN,MODEL,SPLIT_DIR,SEED,LR,RNN_LR,WD,BS,FREEZE
+1,cnn_lstm,data/splits_20s,31184,2.00e-04,3.04e-06,9.54e-04,32,true
+2,cnn_lstm,data/splits,87250,9.88e-04,1.92e-06,2.93e-06,192,false
+3,cnn_lstm,data/splits_10s,2310,1.23e-04,3.01e-05,3.78e-05,64,false
+4,cnn_only,data/splits,34481,2.04e-04,n/a,3.77e-06,256,false
+5,cnn_only,data/splits_20s,29848,2.45e-05,n/a,1.64e-04,192,false
+6,cnn_only,data/splits,33288,1.70e-04,n/a,1.15e-06,64,false
+2,cnn_lstm,data/splits_20s,75370,3.42e-05,2.07e-06,4.08e-06,256,true
+3,cnn_lstm,data/splits,52300,1.78e-04,2.70e-06,1.56e-04,32,false
+4,cnn_only,data/splits_20s,81590,1.00e-05,n/a,8.21e-04,256,false
+5,cnn_only,data/splits,49112,5.90e-04,n/a,4.72e-05,256,false
+7,cnn_lstm_ln,data/splits_10s,41035,1.34e-05,4.67e-06,8.55e-05,192,false
+6,cnn_only,data/splits_10s,1863,4.11e-05,n/a,1.18e-05,192,false
+7,cnn_lstm_ln,data/splits,39780,5.62e-04,2.00e-05,1.18e-05,192,false
+8,cnn_lstm_ln,data/splits,81245,5.77e-05,1.68e-05,4.34e-06,192,false
+8,cnn_lstm_ln,data/splits,86748,3.03e-04,1.64e-06,1.36e-06,32,false
+9,cnn_lstm_ln,data/splits,79851,7.42e-04,6.11e-06,2.33e-06,32,true
