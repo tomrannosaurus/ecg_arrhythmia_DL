@@ -27,3 +27,6 @@
 26,lstm_only,data/splits,61821,1.07e-004,n/a,2.03e-004,32,False
 27,lstm_only,data/splits_10s,21471,4.45e-004,n/a,1.36e-005,32,False
 28,residual,data/splits_10s,52315,9.68e-004,5.24e-006,5.27e-006,256,True
+29,residual,data/splits,5818,7.25e-004,6.33e-005,8.76e-004,32,False
+30,residual,data/splits,477,3.08e-004,6.06e-006,1.17e-005,256,True
+31,gru,data/splits,19480,1.20e-004,8.41e-005,7.10e-004,128,False
