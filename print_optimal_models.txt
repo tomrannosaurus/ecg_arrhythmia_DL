@@ -1,0 +1,22 @@
+Table: Optimal Model Configurations and Performance Metrics
+========================================================================================================================
+
+      Method     Model  Batch_Size       LR   RNN_LR Weight_Decay Test_F1 Test_AUROC Test_Accuracy Platform  Seed
+      Greedy attention          64 5.00e-04 5.00e-04     1.00e-04  0.6991     0.8077        0.6953  Windows    42
+      Greedy attention          64 5.00e-04 5.00e-04     1.00e-04  0.6984     0.8070        0.6992  Windows    42
+      Greedy attention          64 5.00e-04 5.00e-04     1.00e-04  0.6951     0.8054        0.6946    Linux    42
+      Greedy attention          64 5.00e-04 5.00e-04     1.00e-04  0.6827     0.7999        0.6778    Linux    42
+Greedy (avg) attention          64 5.00e-04 5.00e-04     1.00e-04  0.6938     0.8050        0.6917      avg    42
+      Linear    bilstm          24 5.00e-03 1.00e-03     1.00e-06  0.6969     0.7980        0.7020  Windows    42
+      Linear    bilstm          24 5.00e-03 1.00e-03     1.00e-06  0.6950     0.7928        0.6987  Windows    42
+      Linear    bilstm          24 5.00e-03 1.00e-03     1.00e-06  0.6907     0.7925        0.6957    Linux    42
+      Linear    bilstm          24 5.00e-03 1.00e-03     1.00e-06  0.6890     0.7954        0.6914    Linux    42
+Linear (avg)    bilstm          24 5.00e-03 1.00e-03     1.00e-06  0.6929     0.7947        0.6969      avg    42
+          RF  cnn_lstm          48 1.10e-03        -     7.70e-05  0.7716     0.8562        0.7750  Windows    42
+          RF  cnn_lstm          48 1.10e-03        -     7.70e-05  0.7699     0.8534        0.7744    Linux    42
+    RF (avg)  cnn_lstm          48 1.10e-03        -     7.70e-05  0.7707     0.8548        0.7747      avg    42
+          NN    bilstm          24 1.18e-03 1.40e-04     1.24e-06  0.6926     0.8001        0.6938    Linux    42
+   Empirical  cnn_lstm          64 1.00e-04        -     1.00e-04  0.7500     0.8378        0.7537  Windows     1
+========================================================================================================================
+
+(avg) = average across multiple runs of same configuration
