@@ -16,3 +16,6 @@
 15,cnn_bilstm_seq24,data/splits,96406,7.87e-005,9.02e-005,1.19e-006,192,False
 16,cnn_lstm_meanpool,data/splits_10s,35165,2.90e-004,7.94e-006,1.18e-005,192,False
 17,cnn_lstm_meanpool,data/splits,66659,1.85e-004,3.73e-006,9.55e-004,256,False
+18,cnn_lstm_meanpool,data/splits_20s,93349,2.82e-005,2.26e-006,4.82e-006,256,True
+19,bilstm,data/splits_10s,85319,4.00e-004,2.95e-006,3.33e-005,256,False
+20,bilstm,data/splits,9674,8.12e-004,2.47e-005,8.25e-006,64,False
