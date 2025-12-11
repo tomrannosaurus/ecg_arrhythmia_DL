@@ -21,10 +21,11 @@ import pandas as pd
 from core import summarize_data, decompose_model_features
 from stats import (
     analyze_main_effects, analyze_interactions, analyze_model_features,
-    compute_variance_components, find_top_configs, find_robust_configs,
+    compute_variance_components, compute_variance_components_detailed,
+    find_top_configs, find_robust_configs,
     compute_marginal_means, compute_welch_ttest
 )
-from optimizer import optimize, optimize_greedy
+from optimizer import optimize, optimize_greedy, optimize_linear, optimize_rf, optimize_nn
 
 
 # =============================================================================
@@ -164,20 +165,30 @@ def plot_main_effects(effects_df: pd.DataFrame, output_path: str = None) -> None
     
     fig, ax = plt.subplots(figsize=(10, 6))
     
-    colors = ['#2ecc71' if p < 0.05 else '#e74c3c' for p in effects_df['p_value']]
+    factors = effects_df['factor'].values
+    effects = effects_df['effect_size'].values
     
-    ax.barh(effects_df['factor'], effects_df['effect_size'], color=colors)
-    ax.set_xlabel('Effect Size (η² or r²)')
+    colors = ['#2ecc71' if p < 0.05 else '#95a5a6' 
+              for p in effects_df['p_value'].values]
+    
+    bars = ax.barh(range(len(factors)), effects, color=colors)
+    ax.set_yticks(range(len(factors)))
+    ax.set_yticklabels(factors)
+    ax.set_xlabel('Effect Size (η² or R²)')
     ax.set_title('Main Effects on Test F1')
     ax.invert_yaxis()
     
-    # legend
-    from matplotlib.patches import Patch
-    legend_elements = [
-        Patch(facecolor='#2ecc71', label='Significant (p<0.05)'),
-        Patch(facecolor='#e74c3c', label='Not Significant')
-    ]
-    ax.legend(handles=legend_elements, loc='lower right')
+    # significance markers
+    for i, (bar, p) in enumerate(zip(bars, effects_df['p_value'].values)):
+        if p < 0.001:
+            ax.text(bar.get_width() + 0.005, bar.get_y() + bar.get_height()/2, 
+                   '***', va='center', fontsize=10)
+        elif p < 0.01:
+            ax.text(bar.get_width() + 0.005, bar.get_y() + bar.get_height()/2, 
+                   '**', va='center', fontsize=10)
+        elif p < 0.05:
+            ax.text(bar.get_width() + 0.005, bar.get_y() + bar.get_height()/2, 
+                   '*', va='center', fontsize=10)
     
     plt.tight_layout()
     
@@ -195,18 +206,19 @@ def plot_model_boxplot(df: pd.DataFrame, response: str = 'test_f1',
     """boxplot of model performance."""
     plt = setup_matplotlib()
     
-    # order by median
+    # order models by median performance
     model_order = df.groupby('model')[response].median().sort_values(ascending=False).index
     
     fig, ax = plt.subplots(figsize=(12, 6))
     
     data = [df[df['model'] == m][response].values for m in model_order]
-    bp = ax.boxplot(data, labels=model_order, vert=True, patch_artist=True)
+    bp = ax.boxplot(data, labels=model_order, patch_artist=True)
     
     for patch in bp['boxes']:
         patch.set_facecolor('#3498db')
         patch.set_alpha(0.7)
     
+    ax.set_xlabel('Model')
     ax.set_ylabel(response)
     ax.set_title('Model Performance Distribution')
     plt.xticks(rotation=45, ha='right')
@@ -224,7 +236,7 @@ def plot_model_boxplot(df: pd.DataFrame, response: str = 'test_f1',
 
 def plot_interaction_heatmap(df: pd.DataFrame, factor1: str, factor2: str,
                              response: str = 'test_f1', output_path: str = None) -> None:
-    """heatmap of two-factor interaction."""
+    """heatmap of factor interaction."""
     plt = setup_matplotlib()
     
     pivot = df.pivot_table(values=response, index=factor1, columns=factor2, aggfunc='mean')
@@ -329,14 +341,14 @@ def generate_all_figures(df: pd.DataFrame, output_dir: str = 'figures',
 
 def generate_text_report(df: pd.DataFrame, response: str = 'test_f1',
                          output_path: str = None) -> str:
-    """generate comprehensive text report."""
+    """generate comprehensive text report including all interpret and optimize content."""
     lines = []
     
     lines.append("="*70)
     lines.append("ECG ARRHYTHMIA CLASSIFICATION - DOE ANALYSIS REPORT")
     lines.append("="*70)
     
-    # data summary
+    # 1. DATA SUMMARY
     summary = summarize_data(df)
     lines.append("\n1. DATA SUMMARY")
     lines.append("-"*40)
@@ -348,7 +360,7 @@ def generate_text_report(df: pd.DataFrame, response: str = 'test_f1',
         lo, hi = summary['test_f1_range']
         lines.append(f"{response} range: [{lo:.4f}, {hi:.4f}]")
     
-    # main effects
+    # 2. MAIN EFFECTS
     lines.append("\n2. MAIN EFFECTS")
     lines.append("-"*40)
     effects_df = analyze_main_effects(df, response)
@@ -356,7 +368,7 @@ def generate_text_report(df: pd.DataFrame, response: str = 'test_f1',
         sig = '***' if row['p_value'] < 0.001 else '**' if row['p_value'] < 0.01 else '*' if row['p_value'] < 0.05 else ''
         lines.append(f"  {row['factor']:20s} η²={row['effect_size']:.4f} p={row['p_value']:.4f} {sig}")
     
-    # model leaderboard
+    # 3. MODEL LEADERBOARD
     lines.append("\n3. MODEL LEADERBOARD")
     lines.append("-"*40)
     model_stats = df.groupby('model')[response].agg(['mean', 'std', 'count']).round(4)
@@ -364,16 +376,54 @@ def generate_text_report(df: pd.DataFrame, response: str = 'test_f1',
     for model, row in model_stats.iterrows():
         lines.append(f"  {model:25s} mean={row['mean']:.4f} std={row['std']:.4f} n={int(row['count'])}")
     
-    # variance decomposition
+    # 4. VARIANCE DECOMPOSITION
     lines.append("\n4. VARIANCE DECOMPOSITION")
     lines.append("-"*40)
-    var_comp = compute_variance_components(df, response)
-    lines.append(f"  model architecture: {var_comp['model_pct']:.1f}%")
-    lines.append(f"  segment length:     {var_comp['segment_pct']:.1f}%")
-    lines.append(f"  residual (seed+hp): {var_comp['residual_pct']:.1f}%")
+    var_comp = compute_variance_components_detailed(df, response)
+    lines.append(f"  model architecture:     {var_comp['model_pct']:.1f}%")
+    lines.append(f"  segment length:         {var_comp['segment_pct']:.1f}%")
+    lines.append(f"  batch size:             {var_comp['batch_size_pct']:.1f}%")
+    lines.append(f"  learning rate:          {var_comp['lr_pct']:.1f}%")
+    lines.append(f"  rnn learning rate:      {var_comp['rnn_lr_pct']:.1f}%")
+    lines.append(f"  weight decay:           {var_comp['wd_pct']:.1f}%")
+    lines.append(f"  diff_lr setting:        {var_comp['diff_lr_pct']:.1f}%")
+    lines.append(f"  cnn_frozen setting:     {var_comp['cnn_frozen_pct']:.1f}%")
+    lines.append(f"  residual (seed+noise):  {var_comp['residual_pct']:.1f}%")
     
-    # optimization
-    lines.append("\n5. GREEDY OPTIMIZATION")
+    # 5. DOE INTERPRETATION
+    lines.append("\n5. DOE INTERPRETATION")
+    lines.append("-"*40)
+    interp = interpret_results(df, response)
+    
+    # Q1: best architecture
+    arch = interp.get('best_architecture', {})
+    lines.append(f"Q1: Best architecture?")
+    lines.append(f"    {arch.get('best', 'unknown')} (mean={arch.get('mean', 0):.4f})")
+    if arch.get('significant'):
+        lines.append(f"    Significantly better than {arch.get('second')}")
+    else:
+        lines.append(f"    Not significantly different from {arch.get('second')}")
+    
+    # Q2: optimal segment length
+    seg = interp.get('optimal_segment', {})
+    lines.append(f"\nQ2: Optimal segment length?")
+    lines.append(f"    {seg.get('best', 'unknown')}s (mean={seg.get('mean', 0):.4f})")
+    
+    # Q3: differential lr
+    diff = interp.get('diff_lr', {})
+    if diff:
+        lines.append(f"\nQ3: Use differential learning rate?")
+        lines.append(f"    {'Yes' if diff.get('better') else 'No'} (diff_lr={diff.get('diff_true_mean', 0):.4f} vs {diff.get('diff_false_mean', 0):.4f})")
+    
+    # Q4: lr range
+    lr = interp.get('lr_range', {})
+    if lr:
+        lines.append(f"\nQ4: Recommended LR range?")
+        lo, hi = lr.get('recommended', (1e-4, 1e-3))
+        lines.append(f"    [{lo:.2e}, {hi:.2e}]")
+    
+    # 6. GREEDY OPTIMIZATION
+    lines.append("\n6. GREEDY OPTIMIZATION")
     lines.append("-"*40)
     greedy = optimize_greedy(df, response, verbose=False)
     
@@ -389,16 +439,109 @@ def generate_text_report(df: pd.DataFrame, response: str = 'test_f1',
             lines.append(f"  {k}: {v}")
     
     lines.append(f"\nexpected {response}: {greedy['predicted_f1']:.4f} +/- {greedy['std_f1']:.4f}")
+    lines.append(f"based on n={greedy['n_samples']} runs")
     
-    # top configs
-    lines.append("\n6. TOP CONFIGURATIONS")
+    # 7. BEST EMPIRICAL RUN
+    lines.append("\n7. BEST EMPIRICAL RUN")
+    lines.append("-"*40)
+    
+    # group by config + seed, average results for duplicate runs
+    config_cols = ['model', 'segment_length', 'batch_size', 'diff_lr', 'cnn_frozen', 
+                   'lr', 'rnn_lr', 'weight_decay', 'seed']
+    config_cols = [c for c in config_cols if c in df.columns]
+    
+    if config_cols:
+        # average results for identical config+seed combinations
+        agg_cols = {response: 'mean'}
+        if 'test_auroc' in df.columns:
+            agg_cols['test_auroc'] = 'mean'
+        if 'test_acc' in df.columns:
+            agg_cols['test_acc'] = 'mean'
+        
+        df_averaged = df.groupby(config_cols, dropna=False).agg(agg_cols).reset_index()
+        best_idx = df_averaged[response].idxmax()
+        best_run = df_averaged.loc[best_idx]
+        
+        lines.append(f"best {response}: {best_run[response]:.4f}")
+        lines.append("configuration:")
+        for col in config_cols:
+            val = best_run[col]
+            if isinstance(val, float) and not pd.isna(val):
+                if val < 0.01:
+                    lines.append(f"  {col}: {val:.2e}")
+                else:
+                    lines.append(f"  {col}: {val:.4f}")
+            else:
+                lines.append(f"  {col}: {val}")
+    
+    # 8. MULTI-METHOD OPTIMIZATION COMPARISON
+    lines.append("\n8. MULTI-METHOD OPTIMIZATION COMPARISON")
+    lines.append("-"*40)
+    
+    # run all optimization methods
+    opt_results = {}
+    for method in ['greedy', 'linear', 'rf', 'nn']:
+        try:
+            if method == 'greedy':
+                opt_results[method] = greedy
+            elif method == 'linear':
+                opt_results[method] = optimize_linear(df, response, verbose=False)
+            elif method == 'rf':
+                opt_results[method] = optimize_rf(df, response, verbose=False)
+            elif method == 'nn':
+                opt_results[method] = optimize_nn(df, response, verbose=False)
+        except Exception as e:
+            opt_results[method] = {'method': method, 'error': str(e), 'predicted_f1': np.nan}
+    
+    # comparison table
+    lines.append(f"{'Method':<10} {'Predicted F1':<15} {'N Samples':<12} {'Status'}")
+    lines.append("-"*50)
+    for method, result in opt_results.items():
+        if 'error' in result:
+            lines.append(f"{method:<10} {'N/A':<15} {'N/A':<12} ERROR")
+        else:
+            pred = result.get('predicted_f1', np.nan)
+            n = result.get('n_samples', 0)
+            pred_str = f"{pred:.4f}" if not np.isnan(pred) else "N/A"
+            lines.append(f"{method:<10} {pred_str:<15} {n:<12} OK")
+    
+    # best method configs
+    lines.append("\nOPTIMAL CONFIGURATIONS BY METHOD:")
+    for method, result in opt_results.items():
+        if 'error' in result:
+            continue
+        config = result.get('final_config', {})
+        pred = result.get('predicted_f1', np.nan)
+        if not config:
+            continue
+        lines.append(f"\n  {method.upper()} (predicted F1: {pred:.4f}):")
+        for key, val in config.items():
+            if isinstance(val, float):
+                lines.append(f"    {key}: {val:.2e}")
+            else:
+                lines.append(f"    {key}: {val}")
+    
+    # identify best method
+    best_method = None
+    best_f1 = -np.inf
+    for m, r in opt_results.items():
+        if 'predicted_f1' in r and not np.isnan(r['predicted_f1']):
+            if r['predicted_f1'] > best_f1:
+                best_f1 = r['predicted_f1']
+                best_method = m
+    
+    if best_method:
+        lines.append(f"\nBEST METHOD: {best_method.upper()} (predicted F1: {best_f1:.4f})")
+    
+    # 9. TOP CONFIGURATIONS
+    lines.append("\n9. TOP CONFIGURATIONS")
     lines.append("-"*40)
     top = find_top_configs(df, 5, response)
     for i, (_, row) in enumerate(top.iterrows(), 1):
         lines.append(f"  {i}. {row['model']} seg={row['segment_length']} {response}={row[response]:.4f}")
     
-    # robust configs
-    lines.append("\n7. ROBUST CONFIGURATIONS")
+    # 10. ROBUST CONFIGURATIONS
+    lines.append("\n10. ROBUST CONFIGURATIONS")
     lines.append("-"*40)
     robust = find_robust_configs(df, min_seeds=2, response=response)
     for _, row in robust.head(5).iterrows():
@@ -538,7 +681,7 @@ def print_interpretation(results: Dict) -> None:
         lo, hi = lr.get('recommended', (1e-4, 1e-3))
         print(f"    [{lo:.2e}, {hi:.2e}]")
     
-    # Q6
+    # Q6: expanded variance decomposition
     var = results.get('variance', {})
     print(f"\nQ6: Variance decomposition?")
     print(f"    Model: {var.get('model_pct', 0):.1f}%")

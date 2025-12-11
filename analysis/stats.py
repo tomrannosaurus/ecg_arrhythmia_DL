@@ -296,6 +296,116 @@ def compute_variance_components(df: pd.DataFrame, response: str = 'test_f1') -> 
     }
 
 
+def compute_variance_components_detailed(df: pd.DataFrame, response: str = 'test_f1') -> Dict:
+    """
+    decompose total variance into detailed components.
+    
+    expands hyperparameter effects instead of lumping into residual:
+    - model architecture
+    - segment length
+    - batch size
+    - learning rate
+    - rnn learning rate  
+    - weight decay
+    - diff_lr setting
+    - cnn_frozen setting
+    - residual (seed + noise)
+    """
+    total_var = df[response].var()
+    
+    if total_var == 0 or np.isnan(total_var):
+        return {
+            'total_variance': 0,
+            'model_pct': 0,
+            'segment_pct': 0,
+            'batch_size_pct': 0,
+            'lr_pct': 0,
+            'rnn_lr_pct': 0,
+            'wd_pct': 0,
+            'diff_lr_pct': 0,
+            'cnn_frozen_pct': 0,
+            'residual_pct': 100
+        }
+    
+    # helper to compute variance explained by a factor
+    def factor_variance(factor_col):
+        if factor_col not in df.columns:
+            return 0.0
+        if df[factor_col].nunique() <= 1:
+            return 0.0
+        factor_means = df.groupby(factor_col)[response].transform('mean')
+        return factor_means.var()
+    
+    # compute variance for each factor
+    model_var = factor_variance('model')
+    segment_var = factor_variance('segment_length')
+    batch_size_var = factor_variance('batch_size')
+    
+    # for continuous factors, use correlation-based variance explanation
+    def continuous_var(factor_col):
+        if factor_col not in df.columns:
+            return 0.0
+        valid_mask = df[factor_col].notna() & df[response].notna()
+        if valid_mask.sum() < 3:
+            return 0.0
+        x = df.loc[valid_mask, factor_col]
+        y = df.loc[valid_mask, response]
+        try:
+            r, _ = scipy_stats.pearsonr(x, y)
+            if np.isnan(r):
+                return 0.0
+            # r² * total_var gives variance explained
+            return (r ** 2) * total_var
+        except:
+            return 0.0
+    
+    lr_var = continuous_var('log_lr')
+    rnn_lr_var = continuous_var('log_rnn_lr')
+    wd_var = continuous_var('log_wd')
+    
+    diff_lr_var = factor_variance('diff_lr')
+    cnn_frozen_var = factor_variance('cnn_frozen')
+    
+    # sum of explained variances (may exceed total due to correlations)
+    explained_sum = (model_var + segment_var + batch_size_var + 
+                     lr_var + rnn_lr_var + wd_var + 
+                     diff_lr_var + cnn_frozen_var)
+    
+    # scale to ensure sum <= 100%
+    if explained_sum > total_var:
+        scale = total_var / explained_sum * 0.95  # leave 5% for residual
+    else:
+        scale = 1.0
+    
+    model_var *= scale
+    segment_var *= scale
+    batch_size_var *= scale
+    lr_var *= scale
+    rnn_lr_var *= scale
+    wd_var *= scale
+    diff_lr_var *= scale
+    cnn_frozen_var *= scale
+    
+    # residual
+    residual_var = total_var - (model_var + segment_var + batch_size_var + 
+                                 lr_var + rnn_lr_var + wd_var + 
+                                 diff_lr_var + cnn_frozen_var)
+    residual_var = max(0, residual_var)
+    
+    return {
+        'total_variance': float(total_var),
+        'model_pct': float(100 * model_var / total_var),
+        'segment_pct': float(100 * segment_var / total_var),
+        'batch_size_pct': float(100 * batch_size_var / total_var),
+        'lr_pct': float(100 * lr_var / total_var),
+        'rnn_lr_pct': float(100 * rnn_lr_var / total_var),
+        'wd_pct': float(100 * wd_var / total_var),
+        'diff_lr_pct': float(100 * diff_lr_var / total_var),
+        'cnn_frozen_pct': float(100 * cnn_frozen_var / total_var),
+        'residual_pct': float(100 * residual_var / total_var)
+    }
+
+
 def analyze_variance_by_seed(df: pd.DataFrame, response: str = 'test_f1') -> pd.DataFrame:
     """
     analyze within-configuration variance (due to random seed).

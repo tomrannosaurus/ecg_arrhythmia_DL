@@ -149,13 +149,6 @@ def cmd_interpret(args):
     df = load_data(args)
     results = interpret_results(df, args.response)
     print_interpretation(results)
-    
-    # also run optimization
-    print("\n" + "="*70)
-    print("optimization recommendation")
-    print("="*70)
-    opt_result = optimize(df, method='greedy', response=args.response, verbose=True)
-    print_optimization_result(opt_result, args.response)
 
 
 def main():
