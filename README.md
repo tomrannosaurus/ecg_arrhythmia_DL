@@ -11,7 +11,7 @@
 **Current Phase:** Final deliverables (paper writing and presentation preparation)  
 **Experimental Work:** Complete  
 **Paper Deadline:** December 11, 2025  
-**Presentation Dates:** December 1 and December 4, 2025
+**Presentation Date:** December 1, 2025
 
 ---
 
@@ -211,9 +211,9 @@ python plot_training.py \
 
 ## Analysis Tools
 
-The project includes comprehensive Design of Experiments (DOE) analysis tools for systematic hyperparameter optimization and model comparison.
+The project includes comprehensive optimization analysis tools for systematic hyperparameter optimization and model comparison.
 
-### Running DOE Analysis
+### Running Optimization Analysis
 ```bash
 # Full analysis with all statistics
 python analysis/main.py analyze --checkpoint_dir checkpoints

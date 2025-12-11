@@ -6,11 +6,11 @@ main.py - command line interface
 unified entry point for all analysis tasks.
 
 usage:
-    python analysis/main.py analyze --exclude-mps
-    python analysis/main.py optimize --method rf --exclude-mps
-    python analysis/main.py visualize --exclude-mps --output-dir figures
-    python analysis/main.py report --exclude-mps --output report.txt
-    python analysis/main.py interpret --exclude-mps
+    python main.py analyze --exclude-mps
+    python main.py optimize --method rf --exclude-mps
+    python main.py visualize --exclude-mps --output-dir figures
+    python main.py report --exclude-mps --output report.txt
+    python main.py interpret --exclude-mps
 """
 
 import argparse
@@ -121,9 +121,8 @@ def cmd_optimize(args):
         n_candidates=args.n_candidates
     )
     
-    if args.method == 'all':
-        compare_methods(result)
-    else:
+    # for single methods, print the result summary
+    if args.method != 'all':
         print_optimization_result(result, args.response)
 
 
@@ -193,7 +192,7 @@ examples:
     optimize_parser = subparsers.add_parser('optimize', help='run optimization',
                                             parents=[parent_parser])
     optimize_parser.add_argument('--method', default='greedy',
-                                 choices=['greedy', 'rf', 'nn', 'all'],
+                                 choices=['greedy', 'linear', 'rf', 'nn', 'all'],
                                  help='optimization method')
     optimize_parser.add_argument('--n-candidates', type=int, default=10000,
                                  help='candidates for surrogate methods')
