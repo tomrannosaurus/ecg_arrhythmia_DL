@@ -1,0 +1,170 @@
+======================================================================
+ECG ARRHYTHMIA CLASSIFICATION - DOE ANALYSIS REPORT
+======================================================================
+
+1. DATA SUMMARY
+----------------------------------------
+total runs: 264
+unique models: 12
+unique seeds: 229
+test_f1 range: [0.0131, 0.7500]
+
+2. MAIN EFFECTS
+----------------------------------------
+  batch_size           η²=0.2210 p=0.0000 ***
+  log_rnn_lr           η²=0.1485 p=0.0000 ***
+  segment_length       η²=0.1277 p=0.0000 ***
+  log_lr               η²=0.1218 p=0.0000 ***
+  cnn_frozen           η²=0.0675 p=0.0000 ***
+  model                η²=0.0581 p=0.1673 
+  diff_lr              η²=0.0445 p=0.0006 ***
+  log_wd               η²=0.0178 p=0.0300 *
+
+3. MODEL LEADERBOARD
+----------------------------------------
+  bilstm                    mean=0.5173 std=0.0941 n=21
+  attention                 mean=0.5129 std=0.1323 n=15
+  gru                       mean=0.4984 std=0.1027 n=14
+  cnn_lstm_meanpool         mean=0.4892 std=0.1240 n=10
+  cnn_bilstm_seq24          mean=0.4866 std=0.1084 n=19
+  residual                  mean=0.4668 std=0.0966 n=18
+  cnn_only                  mean=0.4646 std=0.0840 n=60
+  cnn_lstm_ln               mean=0.4612 std=0.1213 n=24
+  lstm_only                 mean=0.4574 std=0.0175 n=8
+  simple_lstm               mean=0.4536 std=0.0934 n=17
+  cnn_lstm_seq16            mean=0.4466 std=0.0793 n=19
+  cnn_lstm                  mean=0.4193 std=0.1897 n=39
+
+4. VARIANCE DECOMPOSITION
+----------------------------------------
+  model architecture:     5.8%
+  segment length:         12.8%
+  batch size:             22.1%
+  learning rate:          12.2%
+  rnn learning rate:      14.9%
+  weight decay:           1.8%
+  diff_lr setting:        4.5%
+  cnn_frozen setting:     6.8%
+  residual (seed+noise):  19.3%
+
+5. DOE INTERPRETATION
+----------------------------------------
+Q1: Best architecture?
+    bilstm (mean=0.5173)
+    Not significantly different from attention
+
+Q2: Optimal segment length?
+    5s (mean=0.5071)
+
+Q3: Use differential learning rate?
+    No (diff_lr=0.4537 vs 0.5141)
+
+Q4: Recommended LR range?
+    [6.16e-05, 3.00e-03]
+
+6. GREEDY OPTIMIZATION
+----------------------------------------
+optimization path:
+  step 1: log_rnn_lr = high (η²=0.1716)
+  step 2: segment_length = 5 (η²=0.2055)
+  step 3: log_lr = high (η²=0.1030)
+
+final configuration:
+  model: attention
+  segment_length: 5
+  batch_size: 64
+  diff_lr: True
+  cnn_frozen: False
+  lr: 5.00e-04
+  rnn_lr: 5.00e-04
+  wd: 1.00e-04
+
+expected test_f1: 0.5998 +/- 0.0824
+based on n=13 runs
+
+7. BEST EMPIRICAL RUN
+----------------------------------------
+best test_f1: 0.7500
+configuration:
+  model: cnn_lstm
+  segment_length: 5
+  batch_size: 64
+  diff_lr: False
+  cnn_frozen: False
+  lr: 1.00e-04
+  rnn_lr: 1.00e-04
+  weight_decay: 1.00e-04
+  seed: 1
+
+8. MULTI-METHOD OPTIMIZATION COMPARISON
+----------------------------------------
+Method     Predicted F1    N Samples    Status
+--------------------------------------------------
+greedy     0.5998          13           OK
+linear     0.8551          264          OK
+rf         0.6909          264          OK
+nn         0.7691          264          OK
+
+OPTIMAL CONFIGURATIONS BY METHOD:
+
+  GREEDY (predicted F1: 0.5998):
+    model: attention
+    segment_length: 5
+    batch_size: 64
+    diff_lr: True
+    cnn_frozen: False
+    lr: 5.00e-04
+    rnn_lr: 5.00e-04
+    wd: 1.00e-04
+
+  LINEAR (predicted F1: 0.8551):
+    segment_length: 5
+    model: bilstm
+    batch_size: 24
+    diff_lr: True
+    cnn_frozen: False
+    lr: 5.00e-03
+    rnn_lr: 1.00e-03
+    wd: 1.00e-06
+
+  RF (predicted F1: 0.6909):
+    model: cnn_lstm
+    segment_length: 5
+    batch_size: 48
+    diff_lr: False
+    cnn_frozen: False
+    lr: 1.10e-03
+    rnn_lr: 1.14e-04
+    wd: 7.70e-05
+
+  NN (predicted F1: 0.7691):
+    model: bilstm
+    segment_length: 5
+    batch_size: 24
+    diff_lr: True
+    cnn_frozen: False
+    lr: 1.18e-03
+    rnn_lr: 1.40e-04
+    wd: 1.24e-06
+
+BEST METHOD: LINEAR (predicted F1: 0.8551)
+
+9. TOP CONFIGURATIONS
+----------------------------------------
+  1. cnn_lstm seg=5 test_f1=0.7500
+  2. cnn_lstm_ln seg=5 test_f1=0.7384
+  3. cnn_lstm seg=5 test_f1=0.7340
+  4. cnn_lstm_ln seg=5 test_f1=0.7287
+  5. cnn_lstm seg=5 test_f1=0.7153
+
+10. ROBUST CONFIGURATIONS
+----------------------------------------
+  bilstm               seg= 5 mean=0.5779 std=0.0683
+  cnn_bilstm_seq24     seg= 5 mean=0.5623 std=0.0810
+  cnn_lstm_meanpool    seg= 5 mean=0.5594 std=0.0923
+  lstm_only            seg=10 mean=0.4637 std=0.0065
+  gru                  seg=10 mean=0.4867 std=0.0512
+
+======================================================================
+END OF REPORT
+======================================================================

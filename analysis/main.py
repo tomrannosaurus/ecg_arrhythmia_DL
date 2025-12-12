@@ -6,11 +6,11 @@ main.py - command line interface
 unified entry point for all analysis tasks.
 
 usage:
-    python main.py analyze --exclude-mps
-    python main.py optimize --method rf --exclude-mps
-    python main.py visualize --exclude-mps --output-dir figures
-    python main.py report --exclude-mps --output report.txt
-    python main.py interpret --exclude-mps
+    python analysis/main.py analyze --exclude-mps
+    python analysis/main.py optimize --method rf --exclude-mps
+    python analysis/main.py visualize --exclude-mps --output-dir figures
+    python analysis/main.py report --exclude-mps --output report.txt
+    python analysis/main.py interpret --exclude-mps
 """
 
 import argparse

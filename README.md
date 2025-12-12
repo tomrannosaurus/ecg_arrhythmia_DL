@@ -328,15 +328,15 @@ python grad_cam_ecg.py --checkpoint checkpoints/cnn_lstm_seed42_*.pt --num-sampl
   - [x] Train with optimized hyperparameters (F1=0.750 achieved)
   - [x] Finalize results tables and DOE statistical analysis (264 runs)
 - [x] **[T13]** Deliver presentations (Dec 1 & 4, 2025)
-- [ ] **[T14]** Write final paper (in progress)
-  - [ ] Methods section (architecture, preprocessing, training)
-  - [ ] Results section (tables, figures, statistical tests)
-  - [ ] Discussion and interpretation
-  - [ ] Limitations and future work
+- [x] **[T14]** Write final paper (in progress)
+  - [x] Methods section (architecture, preprocessing, training)
+  - [x] Results section (tables, figures, statistical tests)
+  - [x] Discussion and interpretation
+  - [x] Limitations and future work
   - [x] References and citations
-- [ ] **[T15]** Submit final paper (Dec 11, 2025) and archive GitHub release
-  - [ ] Final proofreading and formatting
-  - [ ] Tag GitHub release with code, configs, and trained models
+- [x] **[T15]** Submit final paper (Dec 11, 2025) and archive GitHub release
+  - [x] Final proofreading and formatting
+  - [x] Tag GitHub release with code, configs, and trained models
 
 ### Key Findings & Lessons Learned
 - **MPS Backend Bug:** PyTorch MPS backend on Apple Silicon had silent gradient failures in LSTM operations (addcmul_, addcdiv_), causing complete learning collapse (F1=0.14 vs 0.750 on CUDA)

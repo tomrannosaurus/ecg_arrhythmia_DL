@@ -149,7 +149,7 @@ def setup_matplotlib():
     """setup matplotlib with available style."""
     import matplotlib.pyplot as plt
     
-    for style in ['seaborn-v0_8-whitegrid', 'seaborn-whitegrid', 'ggplot']:
+    for style in ['seaborn-v0_8-white', 'seaborn-white', 'ggplot']:
         try:
             plt.style.use(style)
             break
