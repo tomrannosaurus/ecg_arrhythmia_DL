@@ -17,7 +17,8 @@ References:
 Usage:
     # visualize class comparison with default settings
     python grad_cam_ecg.py --checkpoint checkpoints/cnn_only_seed42_*.pt
-    python grad_cam_ecg.py --checkpoint checkpoints/cnn_lstm_seed42_20251210_183227_history.pt
+    python grad_cam_ecg.py --checkpoint checkpoints\cnn_lstm_seed1_20251208_011346.pt --output "figures\gradcam_cnn_lstm"
+    python grad_cam_ecg.py --checkpoint checkpoints\cnn_lstm_ln_seed42_20251208_034724.pt --output "figures\gradcam_cnn_lstm_ln"
     
 Authors: CS541 Deep Learning Team
 """
