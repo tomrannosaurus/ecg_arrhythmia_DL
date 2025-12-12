@@ -17,6 +17,8 @@ References:
 Usage:
     # visualize class comparison with default settings
     python grad_cam_ecg.py --checkpoint checkpoints/cnn_only_seed42_*.pt
+    python grad_cam_ecg.py --checkpoint checkpoints\cnn_lstm_seed1_20251208_011346.pt --output "figures\gradcam_cnn_lstm"
+    python grad_cam_ecg.py --checkpoint checkpoints\cnn_lstm_ln_seed42_20251208_034724.pt --output "figures\gradcam_cnn_lstm_ln"
     
 Authors: CS541 Deep Learning Team
 """
@@ -187,6 +189,13 @@ class GradCAM1D:
         x = x.to(next(self.model.parameters()).device)
         x.requires_grad_(True)
         
+        # temporarily switch to train mode for backward pass BUG FIX
+        # this is required because cudnn RNN backward only works in training mode
+        # note: this means dropout will be active, but for visualization purposes
+        # this is acceptable since we're looking at attention patterns, not exact outputs
+        was_training = self.model.training
+        self.model.train()
+        
         # forward pass
         output = self.model(x)
         probs = F.softmax(output, dim=1)
@@ -202,6 +211,10 @@ class GradCAM1D:
         self.model.zero_grad()
         target_score = output[0, target_class]
         target_score.backward()
+        
+        # restore original mode
+        if not was_training:
+            self.model.eval()
         
         # compute grad-cam
         # global average pooling of gradients -> weights
